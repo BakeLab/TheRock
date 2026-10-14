@@ -1,0 +1,41 @@
+From 110e612124b9e68f0904bb9b35967b7ef17e9a95 Mon Sep 17 00:00:00 2001
+From: Yuanyuan Chen <cyyever@outlook.com>
+Date: Wed, 14 Oct 2026 13:31:08 +0000
+Subject: [PATCH] clr: honor over-alignment in ReferenceCountedObject::operator
+ new
+
+ReferenceCountedObject declares a class-scope operator new(size_t). Under
+C++17 that hides the global std::align_val_t overload, so new-expressions
+for over-aligned subclasses fall back to the unaligned allocator.
+VirtualGPU holds alignas(64) AQL barrier packets; built with
+-march=znver4, its constructor zeroes them with 64-byte vmovaps, which
+faults whenever malloc returns a 32-byte aligned block (first
+hipMemset/hipMemsetAsync segfaults).
+
+Add aligned operator new/delete overloads that forward to the global
+aligned allocator.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ projects/clr/rocclr/include/top.hpp | 5 +++++
+ 1 file changed, 5 insertions(+)
+
+diff --git a/projects/clr/rocclr/include/top.hpp b/projects/clr/rocclr/include/top.hpp
+index 277dd3e78e..44a0ae4872 100644
+--- a/projects/clr/rocclr/include/top.hpp
++++ b/projects/clr/rocclr/include/top.hpp
+@@ -168,6 +168,11 @@ class ReferenceCountedObject {
+     return ReferenceCountedObject::operator new(size + extSize);
+   };
+   void operator delete(void* obj, size_t extSize) { ReferenceCountedObject::operator delete(obj); }
++  // A class-scope operator new(size_t) hides the global aligned overload, so
++  // over-aligned subclasses (alignas(64) AQL packets in VirtualGPU) would get
++  // only malloc alignment; AVX-512 stores to them then fault.
++  void* operator new(size_t size, std::align_val_t align) { return ::operator new(size, align); }
++  void operator delete(void* p, std::align_val_t align) { ::operator delete(p, align); }
+ 
+   uint referenceCount() const { return referenceCount_.load(std::memory_order_relaxed); }
+ 
+-- 
+2.56.0
+
