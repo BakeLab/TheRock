@@ -1,0 +1,25 @@
+From 08b63a2ad1d348bfa95e5071dc64ed5be73be9aa Mon Sep 17 00:00:00 2001
+From: Yuanyuan Chen <cyyever@outlook.com>
+Date: Thu, 15 Oct 2026 09:00:49 +0000
+Subject: [PATCH] hipcub: use std::extents only when mdspan is available
+
+---
+ .../hipcub/include/hipcub/backend/rocprim/util_mdspan.hpp       | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/projects/hipcub/hipcub/include/hipcub/backend/rocprim/util_mdspan.hpp b/projects/hipcub/hipcub/include/hipcub/backend/rocprim/util_mdspan.hpp
+index a75841d46..850206587 100644
+--- a/projects/hipcub/hipcub/include/hipcub/backend/rocprim/util_mdspan.hpp
++++ b/projects/hipcub/hipcub/include/hipcub/backend/rocprim/util_mdspan.hpp
+@@ -97,7 +97,7 @@ constexpr bool in_range(U t) noexcept
+ 
+ } // namespace detail
+ 
+-#if __cplusplus >= 202302L
++#if __cplusplus >= 202302L && defined(__cpp_lib_mdspan)
+ template<class IndexType, size_t... Extents>
+ using extents = std::extents<IndexType, Extents...>;
+ #else
+-- 
+2.56.0
+
