@@ -1,0 +1,45 @@
+From 7acde3c71747a16731fe3c58b9008328c13db6ce Mon Sep 17 00:00:00 2001
+From: Yuanyuan Chen <cyyever@outlook.com>
+Date: Thu, 15 Oct 2026 05:42:18 +0000
+Subject: [PATCH] rocfft: define OptionalExpression's destructor out of line
+
+OptionalExpression holds a std::unique_ptr<Expression>, and Expression is
+a std::variant whose alternatives are mostly forward-declared at that
+point in generator.h. Every other special member was already declared in
+the header and defined in generator.cpp, but the destructor stayed
+implicit, so Variable's implicit destructor instantiated
+~unique_ptr<Expression> in the header. With C++23's constexpr
+std::variant/std::unique_ptr that instantiation requires every alternative
+to be complete and fails ("incomplete type 'Less' used in type trait
+expression"). Declare the destructor and default it in generator.cpp.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ projects/rocfft/library/src/device/generator/generator.cpp | 1 +
+ projects/rocfft/library/src/device/generator/generator.h   | 1 +
+ 2 files changed, 2 insertions(+)
+
+diff --git a/projects/rocfft/library/src/device/generator/generator.cpp b/projects/rocfft/library/src/device/generator/generator.cpp
+index df837b4de..26354abea 100644
+--- a/projects/rocfft/library/src/device/generator/generator.cpp
++++ b/projects/rocfft/library/src/device/generator/generator.cpp
+@@ -315,6 +315,7 @@ Variable Variable::at(const Expression& index, const Expression& index2D) const
+ }
+ 
+ OptionalExpression::OptionalExpression() {}
++OptionalExpression::~OptionalExpression() = default;
+ 
+ OptionalExpression::OptionalExpression(OptionalExpression&& o)
+     : expr(std::move(o.expr))
+diff --git a/projects/rocfft/library/src/device/generator/generator.h b/projects/rocfft/library/src/device/generator/generator.h
+index 75fc26888..f6a353913 100644
+--- a/projects/rocfft/library/src/device/generator/generator.h
++++ b/projects/rocfft/library/src/device/generator/generator.h
+@@ -164,6 +164,7 @@ class OptionalExpression
+ 
+ public:
+     OptionalExpression();
++    ~OptionalExpression();
+     OptionalExpression(OptionalExpression&&);
+     OptionalExpression(const OptionalExpression&);
+     OptionalExpression& operator=(OptionalExpression&&);

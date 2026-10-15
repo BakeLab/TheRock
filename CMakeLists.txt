@@ -156,6 +156,12 @@ set(THEROCK_ROCM_SYSTEMS_SOURCE_DIR_DEFAULT "${THEROCK_SOURCE_DIR}/rocm-systems"
 set(THEROCK_ROCM_SYSTEMS_SOURCE_DIR "${THEROCK_ROCM_SYSTEMS_SOURCE_DIR_DEFAULT}" CACHE STRING "Path to rocm-systems superrepo")
 cmake_path(ABSOLUTE_PATH THEROCK_ROCM_SYSTEMS_SOURCE_DIR NORMALIZE)
 
+# C++ standard for ROCm's own subprojects (rocm-systems and rocm-libraries).
+# Empty keeps each project's own setting; e.g. 23 compiles targets that ask
+# for C++17/20 as C++23. See therock_cmake_subproject_activate().
+set(THEROCK_CXX_STANDARD "" CACHE STRING
+  "Override the C++ standard of rocm-systems/rocm-libraries subprojects (empty: project default)")
+
 # Allow specifying alternative source locations for ROCgdb, amd-dbgapi
 # and rocr-debug-agent (and rocr-debug-agent-tests as a consequence).
 therock_enable_external_source("rocgdb" "${THEROCK_SOURCE_DIR}/debug-tools/rocgdb/source" OFF)

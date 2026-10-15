@@ -913,6 +913,53 @@ function(therock_cmake_subproject_activate target_name)
   _therock_get_flag_init_contents(_flag_init_contents "${target_name}")
   string(APPEND _init_contents "${_flag_init_contents}")
 
+  # Optionally raise the C++ standard of ROCm's own subprojects (sources under
+  # rocm-systems or rocm-libraries). Most of them hard-code
+  # set(CMAKE_CXX_STANDARD 17|20), so instead of patching each CMakeLists.txt
+  # the per-standard compile options are redirected: a target asking for an
+  # older standard is compiled with THEROCK_CXX_STANDARD. This must run after
+  # project() has enabled the languages (the compiler modules set these
+  # variables), so it goes through CMAKE_PROJECT_INCLUDE rather than the
+  # _init.cmake top-level include. CMAKE_<LANG>_STANDARD_DEFAULT is cleared to
+  # 98 so targets whose request matches the compiler default still get an
+  # explicit flag. Compiler, LLVM and third-party subprojects are left alone,
+  # and HIP options only cover languages enabled by project().
+  set(_cxx_std_args)
+  if(THEROCK_CXX_STANDARD)
+    cmake_path(IS_PREFIX THEROCK_ROCM_SYSTEMS_SOURCE_DIR "${_cmake_source_dir}"
+      NORMALIZE _cxx_std_in_systems)
+    cmake_path(IS_PREFIX THEROCK_ROCM_LIBRARIES_SOURCE_DIR "${_cmake_source_dir}"
+      NORMALIZE _cxx_std_in_libraries)
+    if(_cxx_std_in_systems OR _cxx_std_in_libraries)
+      set(_cxx_std "${THEROCK_CXX_STANDARD}")
+      set(_cxx_std_contents "")
+      foreach(_lang CXX HIP)
+        string(APPEND _cxx_std_contents
+          "if(CMAKE_${_lang}_COMPILER_LOADED)\n"
+          "  if(NOT DEFINED CMAKE_${_lang}_STANDARD)\n"
+          "    set(CMAKE_${_lang}_STANDARD ${_cxx_std})\n"
+          "  endif()\n"
+          "  set(CMAKE_${_lang}_STANDARD_DEFAULT 98)\n")
+        foreach(_older 98 11 14 17 20)
+          if(_older EQUAL 98 OR _older LESS _cxx_std)
+            string(APPEND _cxx_std_contents
+              "  set(CMAKE_${_lang}${_older}_STANDARD_COMPILE_OPTION \"-std=c++${_cxx_std}\")\n"
+              "  set(CMAKE_${_lang}${_older}_EXTENSION_COMPILE_OPTION \"-std=gnu++${_cxx_std}\")\n")
+          endif()
+        endforeach()
+        string(APPEND _cxx_std_contents "endif()\n")
+      endforeach()
+      string(REPLACE "_init.cmake" "_cxx_standard.cmake" _cxx_std_include_file
+        "${_cmake_project_init_file}")
+      file(CONFIGURE OUTPUT "${_cxx_std_include_file}" CONTENT "${_cxx_std_contents}")
+      list(APPEND _fprint_files "${_cxx_std_include_file}")
+      list(APPEND _cxx_std_args "-DCMAKE_PROJECT_INCLUDE=${_cxx_std_include_file}")
+      if(THEROCK_VERBOSE)
+        message(STATUS "  CXX_STANDARD: ${_cxx_std}")
+      endif()
+    endif()
+  endif()
+
   file(CONFIGURE OUTPUT "${_cmake_project_init_file}" CONTENT "${_init_contents}" @ONLY ESCAPE_QUOTES)
   list(APPEND _fprint_files "${_cmake_project_init_file}")
   list(APPEND _fprint_files "${ROCM_BUILD_FLAGS_STATE_FILE}")
@@ -1039,6 +1086,7 @@ function(therock_cmake_subproject_activate target_name)
         "-DTHEROCK_STAGE_INSTALL_ROOT=${_stage_dir}"
         "-DCMAKE_TOOLCHAIN_FILE=${_cmake_project_toolchain_file}"
         "-DCMAKE_PROJECT_TOP_LEVEL_INCLUDES=${_cmake_project_init_file}"
+        ${_cxx_std_args}
         ${_cmake_args}
       # CMake doesn't always generate a compile_commands.json so touch one to keep
       # the build graph sane.
