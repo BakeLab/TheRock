@@ -1,0 +1,50 @@
+From c0c06d148a3d9784399ad486257ea34629b19ddd Mon Sep 17 00:00:00 2001
+From: Yuanyuan Chen <cyyever@outlook.com>
+Date: Thu, 15 Oct 2026 04:58:14 +0000
+Subject: [PATCH 2/3] clr: fix unsequenced chunk index update and device name
+ copy
+
+- rocvirtual: `active_chunk_ = ++active_chunk_ % n` modifies active_chunk_
+  twice without sequencing (-Wsequence-point); use (active_chunk_ + 1) % n.
+- hip_device: strncpy into hipDeviceProp_t::name was bounded by the source
+  array size (boardName_[128]) rather than the destination; bound by the
+  destination and always NUL-terminate.
+
+Found with a g++ -fsyntax-only -Wall -Wextra scan.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ projects/clr/hipamd/src/hip_device.cpp         | 3 ++-
+ projects/clr/rocclr/device/rocm/rocvirtual.cpp | 2 +-
+ 2 files changed, 3 insertions(+), 2 deletions(-)
+
+diff --git a/projects/clr/hipamd/src/hip_device.cpp b/projects/clr/hipamd/src/hip_device.cpp
+index 6bceb17afb..499959f982 100644
+--- a/projects/clr/hipamd/src/hip_device.cpp
++++ b/projects/clr/hipamd/src/hip_device.cpp
+@@ -643,7 +643,8 @@ hipError_t ihipGetDeviceProperties(hipDeviceProp_tR0600* props, int device) {
+ 
+   const auto& info = deviceHandle->info();
+   const auto& isa = deviceHandle->isa();
+-  ::strncpy(deviceProps.name, info.boardName_, sizeof(info.boardName_));
++  ::strncpy(deviceProps.name, info.boardName_, sizeof(deviceProps.name) - 1);
++  deviceProps.name[sizeof(deviceProps.name) - 1] = '\0';
+   memcpy(deviceProps.uuid.bytes, info.uuid_, sizeof(info.uuid_));
+   deviceProps.totalGlobalMem = info.globalMemSize_;
+   const size_t ldsPerMultiprocessor = static_cast<size_t>(info.localMemSizePerCU_) *
+diff --git a/projects/clr/rocclr/device/rocm/rocvirtual.cpp b/projects/clr/rocclr/device/rocm/rocvirtual.cpp
+index 830a15b50a..4a0ea2f97d 100644
+--- a/projects/clr/rocclr/device/rocm/rocvirtual.cpp
++++ b/projects/clr/rocclr/device/rocm/rocvirtual.cpp
+@@ -2657,7 +2657,7 @@ address VirtualGPU::ManagedBuffer::Acquire(uint32_t size, uint32_t alignment) {
+     // Dispatch a barrier packet into the queue
+     gpu_.dispatchBarrierPacket(kBarrierPacketHeader, kSkipSignal, pool_signal_[active_chunk_]);
+     // Get the next chunk
+-    active_chunk_ = ++active_chunk_ % num_chunk_signals_;
++    active_chunk_ = (active_chunk_ + 1) % num_chunk_signals_;
+     // Make sure the new active chunk is free
+     bool test = WaitForSignal(pool_signal_[active_chunk_], gpu_.ActiveWait());
+     assert(test && "Runtime can't fail a wait for chunk!");
+-- 
+2.56.0
+

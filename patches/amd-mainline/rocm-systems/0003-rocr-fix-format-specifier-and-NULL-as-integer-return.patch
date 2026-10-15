@@ -1,0 +1,45 @@
+From bf623babbc0d7c5487449ab0c9e95413619ce92a Mon Sep 17 00:00:00 2001
+From: Yuanyuan Chen <cyyever@outlook.com>
+Date: Thu, 15 Oct 2026 04:58:14 +0000
+Subject: [PATCH 3/3] rocr: fix format specifier and NULL-as-integer return
+
+- libhsakmt: print the HsaMemoryObjectHandle pointer with %p, not %lx.
+- loader: SymbolAddress returns uint64_t; return 0 instead of NULL.
+
+Found with a g++ -fsyntax-only -Wall -Wextra scan.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ projects/rocr-runtime/libhsakmt/src/memory.c                    | 2 +-
+ projects/rocr-runtime/runtime/hsa-runtime/loader/executable.cpp | 2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/projects/rocr-runtime/libhsakmt/src/memory.c b/projects/rocr-runtime/libhsakmt/src/memory.c
+index 54659dde00..5cb7007aef 100644
+--- a/projects/rocr-runtime/libhsakmt/src/memory.c
++++ b/projects/rocr-runtime/libhsakmt/src/memory.c
+@@ -961,7 +961,7 @@ HSAKMT_STATUS HSAKMTAPI hsaKmtHandleExport(const HsaHandleExportDesc* desc,
+ 	if (!desc || !res || desc->device_handle == NULL)
+ 		return HSAKMT_STATUS_INVALID_HANDLE;
+ 
+-	pr_debug("[%s] type:%s handle:%lx size:%lx", __func__,
++	pr_debug("[%s] type:%s handle:%p size:%lx", __func__,
+ 		(desc->type == HSA_EXTERNAL_HANDLE_GEM_FLINK_NAME) 	? "GEM_FLINK" :
+ 		(desc->type == HSA_EXTERNAL_HANDLE_KMS) 			? "KMS" :
+ 		(desc->type == HSA_EXTERNAL_HANDLE_DMA_BUF) 		? "DMA_BUF" :
+diff --git a/projects/rocr-runtime/runtime/hsa-runtime/loader/executable.cpp b/projects/rocr-runtime/runtime/hsa-runtime/loader/executable.cpp
+index 0fbb4a038f..0380380353 100644
+--- a/projects/rocr-runtime/runtime/hsa-runtime/loader/executable.cpp
++++ b/projects/rocr-runtime/runtime/hsa-runtime/loader/executable.cpp
+@@ -1890,7 +1890,7 @@ uint64_t ExecutableImpl::SymbolAddress(hsa_agent_t agent, code::Symbol* sym)
+ uint64_t ExecutableImpl::SymbolAddress(hsa_agent_t agent, elf::Symbol* sym)
+ {
+   elf::Section* sec = sym->section();
+-  if(!sec) { return NULL; }
++  if(!sec) { return 0; }
+ 
+   Segment* seg = SectionSegment(agent, sec);
+   uint64_t vaddr = sec->addr() + sym->value();
+-- 
+2.56.0
+
