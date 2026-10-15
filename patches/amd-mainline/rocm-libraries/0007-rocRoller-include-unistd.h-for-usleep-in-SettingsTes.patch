@@ -1,0 +1,27 @@
+From 2fc905cf4863bc1eb8a7ecf637c2e70e193662df Mon Sep 17 00:00:00 2001
+From: Yuanyuan Chen <cyyever@outlook.com>
+Date: Thu, 15 Oct 2026 05:35:14 +0000
+Subject: [PATCH 7/7] rocRoller: include <unistd.h> for usleep in SettingsTest
+
+SettingsTest.cpp calls usleep() but relied on a transitive include that
+newer glibc/libstdc++ no longer provide, so the test target fails to
+build and blocks the hipBLAS stage step in TheRock.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ shared/rocroller/test/catch/SettingsTest.cpp | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/shared/rocroller/test/catch/SettingsTest.cpp b/shared/rocroller/test/catch/SettingsTest.cpp
+index a713db767..4207dfe14 100644
+--- a/shared/rocroller/test/catch/SettingsTest.cpp
++++ b/shared/rocroller/test/catch/SettingsTest.cpp
+@@ -10,6 +10,8 @@
+ #include "common/SourceMatcher.hpp"
+ #include <rocRoller/Utilities/Settings_fwd.hpp>
+ 
++#include <unistd.h>
++
+ using namespace rocRoller;
+ using namespace Catch::Matchers;
+ 

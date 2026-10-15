@@ -1,0 +1,39 @@
+From 9ff377df1ff41a434b91c54021da092368879f27 Mon Sep 17 00:00:00 2001
+From: Yuanyuan Chen <cyyever@outlook.com>
+Date: Mon, 12 Oct 2026 10:00:45 +0000
+Subject: [PATCH 1/7] Trim unsupported kernels for gfx1201 build
+
+---
+ projects/miopen/src/hipconv/src/arch/cdna4/CMakeLists.txt   | 6 ------
+ .../isa_spec_manager/amdisa_structures.h                    | 1 +
+ 2 files changed, 1 insertion(+), 6 deletions(-)
+
+diff --git a/projects/miopen/src/hipconv/src/arch/cdna4/CMakeLists.txt b/projects/miopen/src/hipconv/src/arch/cdna4/CMakeLists.txt
+index c6781a3ef..becf46771 100644
+--- a/projects/miopen/src/hipconv/src/arch/cdna4/CMakeLists.txt
++++ b/projects/miopen/src/hipconv/src/arch/cdna4/CMakeLists.txt
+@@ -13,12 +13,6 @@ hipconv_autoshard(ARCH         cdna4
+                   CONFIG_TABLE direct/direct_l1/config_table.h
+                   KERNEL       direct/direct_l1/kernel.h
+                   NUM_SHARDS   ${HIPCONV_NUM_SHARDS})
+-hipconv_autoshard(ARCH         cdna4
+-                  NAMESPACE    direct_wgrad
+-                  KERNEL_CLASS DirectWgrad_ConvKernel
+-                  CONFIG_TABLE direct/direct_wgrad/config_table.h
+-                  KERNEL       direct/direct_wgrad/kernel.h
+-                  NUM_SHARDS   ${HIPCONV_NUM_SHARDS})
+ hipconv_autoshard(ARCH         cdna4
+                   NAMESPACE    depthwise_1d_toeplitz
+                   KERNEL_CLASS Depthwise_1D_Toeplitz_ConvKernel
+diff --git a/shared/rocroller/GPUArchitectureGenerator/isa_spec_manager/amdisa_structures.h b/shared/rocroller/GPUArchitectureGenerator/isa_spec_manager/amdisa_structures.h
+index 00b3537b0..763ad4171 100644
+--- a/shared/rocroller/GPUArchitectureGenerator/isa_spec_manager/amdisa_structures.h
++++ b/shared/rocroller/GPUArchitectureGenerator/isa_spec_manager/amdisa_structures.h
+@@ -4,6 +4,7 @@
+ #ifndef AMDISA_STRUCTURES_H_
+ #define AMDISA_STRUCTURES_H_
+ 
++#include <cstdint>
+ #include <map>
+ #include <memory>
+ #include <string>

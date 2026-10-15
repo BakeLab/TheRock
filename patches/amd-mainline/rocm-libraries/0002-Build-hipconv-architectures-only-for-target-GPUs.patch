@@ -1,0 +1,150 @@
+From abb2151aecfaaf5ac08ecf9341e98bb7bb3a9963 Mon Sep 17 00:00:00 2001
+From: Yuanyuan Chen <cyyever@outlook.com>
+Date: Tue, 13 Oct 2026 01:43:29 +0000
+Subject: [PATCH 2/7] Build hipconv architectures only for target GPUs
+
+---
+ projects/miopen/src/hipconv/CMakeLists.txt                | 8 ++------
+ projects/miopen/src/hipconv/cmake/GpuArch.cmake           | 5 +++++
+ projects/miopen/src/hipconv/src/arch/cdna3/CMakeLists.txt | 2 +-
+ projects/miopen/src/hipconv/src/arch/cdna4/CMakeLists.txt | 2 +-
+ .../miopen/src/hipconv/src/arch/cdna4/direct_backend.cpp  | 4 +---
+ projects/miopen/src/hipconv/src/arch/cdna5/CMakeLists.txt | 2 +-
+ projects/miopen/src/hipconv/src/arch_registry.cpp.in      | 3 +--
+ projects/miopen/src/hipconv/src/registry.cpp              | 4 ++--
+ 8 files changed, 14 insertions(+), 16 deletions(-)
+
+diff --git a/projects/miopen/src/hipconv/CMakeLists.txt b/projects/miopen/src/hipconv/CMakeLists.txt
+index e60987b7b..fdb0c5678 100644
+--- a/projects/miopen/src/hipconv/CMakeLists.txt
++++ b/projects/miopen/src/hipconv/CMakeLists.txt
+@@ -80,8 +80,8 @@ endif()
+ option(HIPCONV_ENABLE_CDNA4_DW_2D_TOEPLITZ
+     "Build the experimental cdna4 depthwise 2D patch-Toeplitz kernel (slower than 1D; not auto-selected)" OFF)
+ 
+-# Every arch in the tree is built, whatever this build targets: the set of arch
+-# directories is a property of the snapshot, the GPU list is not.
++# Each architecture directory declares its supported GPU targets. NPI
++# architectures are omitted when this build serves none of their GPUs.
+ file(GLOB _hipconv_arch_directories RELATIVE ${CMAKE_CURRENT_SOURCE_DIR} "src/arch/*")
+ set(_arch_targets "")
+ foreach(_arch_dir IN LISTS _hipconv_arch_directories)
+@@ -98,10 +98,6 @@ foreach(_arch_dir IN LISTS _hipconv_arch_directories)
+         endif()
+     endforeach()
+ endforeach()
+-if(NOT _arch_targets)
+-    message(FATAL_ERROR "hipconv: no architectures found under src/arch")
+-endif()
+-
+ # ---- hipconv static library ----
+ set(_arch_registry "src/arch_registry.cpp")
+ hipconv_make_arch_registry("${_arch_targets}" "${_arch_registry}")
+diff --git a/projects/miopen/src/hipconv/cmake/GpuArch.cmake b/projects/miopen/src/hipconv/cmake/GpuArch.cmake
+index 79609be70..ccf33b421 100644
+--- a/projects/miopen/src/hipconv/cmake/GpuArch.cmake
++++ b/projects/miopen/src/hipconv/cmake/GpuArch.cmake
+@@ -172,6 +172,7 @@ endfunction()
+ function(hipconv_make_arch_registry targets out_file_name)
+     set(HIPCONV_REG_DECLS "")
+     set(HIPCONV_REG_ROWS "")
++    set(HIPCONV_REG_SIZE 0)
+     foreach(target IN LISTS targets)
+         get_target_property(name ${target} HIPCONV_ARCH_NAME)
+         get_target_property(gpus ${target} HIPCONV_ARCH_TARGETS)
+@@ -182,8 +183,12 @@ function(hipconv_make_arch_registry targets out_file_name)
+             string(APPEND HIPCONV_REG_ROWS
+                 "{ \"${gpu}\", algos_${name}, },\n"
+             )
++            math(EXPR HIPCONV_REG_SIZE "${HIPCONV_REG_SIZE} + 1")
+         endforeach()
+     endforeach()
++    if(NOT HIPCONV_REG_ROWS)
++        set(HIPCONV_REG_ROWS "{ \"\", {}, },\n")
++    endif()
+     configure_file(
+         ${HIPCONV_ROOT}/src/arch_registry.cpp.in
+         ${out_file_name}
+diff --git a/projects/miopen/src/hipconv/src/arch/cdna3/CMakeLists.txt b/projects/miopen/src/hipconv/src/arch/cdna3/CMakeLists.txt
+index b1a132667..5ba2d3fec 100644
+--- a/projects/miopen/src/hipconv/src/arch/cdna3/CMakeLists.txt
++++ b/projects/miopen/src/hipconv/src/arch/cdna3/CMakeLists.txt
+@@ -1,3 +1,3 @@
+ include(GpuArch)
+ 
+-hipconv_add_arch_lib(cdna3 TARGETS gfx942)
++hipconv_add_arch_lib(cdna3 NPI TARGETS gfx942)
+diff --git a/projects/miopen/src/hipconv/src/arch/cdna4/CMakeLists.txt b/projects/miopen/src/hipconv/src/arch/cdna4/CMakeLists.txt
+index becf46771..117017933 100644
+--- a/projects/miopen/src/hipconv/src/arch/cdna4/CMakeLists.txt
++++ b/projects/miopen/src/hipconv/src/arch/cdna4/CMakeLists.txt
+@@ -1,6 +1,6 @@
+ include(GpuArch)
+ 
+-hipconv_add_arch_lib(cdna4 TARGETS gfx950)
++hipconv_add_arch_lib(cdna4 NPI TARGETS gfx950)
+ hipconv_autoshard(ARCH         cdna4
+                   NAMESPACE    direct
+                   KERNEL_CLASS Direct_F16_ConvKernel
+diff --git a/projects/miopen/src/hipconv/src/arch/cdna4/direct_backend.cpp b/projects/miopen/src/hipconv/src/arch/cdna4/direct_backend.cpp
+index 73aa9db0a..4f6107ad1 100644
+--- a/projects/miopen/src/hipconv/src/arch/cdna4/direct_backend.cpp
++++ b/projects/miopen/src/hipconv/src/arch/cdna4/direct_backend.cpp
+@@ -9,7 +9,6 @@ using hipconv::ConvKernelSpan;
+ // Defined by autoshard
+ extern const ConvKernelSpan direct_cdna4_kernels;
+ extern const ConvKernelSpan direct_l1_cdna4_kernels;
+-extern const ConvKernelSpan direct_wgrad_cdna4_kernels;
+ 
+ namespace
+ {
+@@ -19,10 +18,9 @@ bool is_applicable(const Conv2dParams& par)
+     return par.dilation_h == 1 && par.dilation_w == 1;
+ }
+ 
+-constexpr std::array<const ConvKernelSpan*, 3> kernel_groups = {
++constexpr std::array<const ConvKernelSpan*, 2> kernel_groups = {
+     &direct_l1_cdna4_kernels,
+     &direct_cdna4_kernels,
+-    &direct_wgrad_cdna4_kernels,
+ };
+ 
+ } // namespace
+diff --git a/projects/miopen/src/hipconv/src/arch/cdna5/CMakeLists.txt b/projects/miopen/src/hipconv/src/arch/cdna5/CMakeLists.txt
+index 0bba87931..b34f7e6d0 100644
+--- a/projects/miopen/src/hipconv/src/arch/cdna5/CMakeLists.txt
++++ b/projects/miopen/src/hipconv/src/arch/cdna5/CMakeLists.txt
+@@ -1,6 +1,6 @@
+ include(GpuArch)
+ 
+-hipconv_add_arch_lib(cdna5 TARGETS gfx1250)
++hipconv_add_arch_lib(cdna5 NPI TARGETS gfx1250)
+ hipconv_autoshard(ARCH         cdna5
+                   NAMESPACE    direct
+                   KERNEL_CLASS Direct_F16_ConvKernel
+diff --git a/projects/miopen/src/hipconv/src/arch_registry.cpp.in b/projects/miopen/src/hipconv/src/arch_registry.cpp.in
+index 81e0169ed..2dbc16cb6 100644
+--- a/projects/miopen/src/hipconv/src/arch_registry.cpp.in
++++ b/projects/miopen/src/hipconv/src/arch_registry.cpp.in
+@@ -12,5 +12,4 @@ const hipconv::ArchEntry hipconv_arch_registry[] = {
+ @HIPCONV_REG_ROWS@
+ };
+ // clang-format on
+-const std::size_t hipconv_arch_registry_size =
+-    sizeof(hipconv_arch_registry) / sizeof(hipconv_arch_registry[0]);
++const std::size_t hipconv_arch_registry_size = @HIPCONV_REG_SIZE@;
+diff --git a/projects/miopen/src/hipconv/src/registry.cpp b/projects/miopen/src/hipconv/src/registry.cpp
+index 8f2eb7305..546534750 100644
+--- a/projects/miopen/src/hipconv/src/registry.cpp
++++ b/projects/miopen/src/hipconv/src/registry.cpp
+@@ -42,8 +42,8 @@ __global__ void device_code_probe() {}
+ 
+ // Whether this binary carries device code for the current GPU.
+ //
+-// The registry covers every arch in the tree, so a hit there does not mean the
+-// kernels were built here. Cached per device; architectures can differ per GPU.
++// The registry contains only architectures selected for this build. Cached per
++// device because architectures can differ per GPU in a multi-GPU process.
+ bool device_code_available()
+ {
+     int device = 0;

@@ -16,7 +16,7 @@
 	branch = mainline
 [submodule "rocm-libraries"]
 	path = rocm-libraries
-	url = https://github.com/cyyever/rocm-libraries.git
+	url = https://github.com/ROCm/rocm-libraries
 	branch = develop
 [submodule "rocm-systems"]
 	path = rocm-systems

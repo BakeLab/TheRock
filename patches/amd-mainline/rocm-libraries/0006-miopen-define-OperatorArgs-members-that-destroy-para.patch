@@ -1,0 +1,82 @@
+From 21cd47e46551001b1a0b39627d3d82261f36990e Mon Sep 17 00:00:00 2001
+From: Yuanyuan Chen <cyyever@outlook.com>
+Date: Thu, 15 Oct 2026 05:32:33 +0000
+Subject: [PATCH 6/7] miopen: define OperatorArgs members that destroy params
+ out of line
+
+fusion_op_args.hpp only forward-declares FusionOpInvokeParamBase, but
+OperatorArgs defined SetArg inline and had implicit special members, all
+of which instantiate ~unique_ptr<FusionOpInvokeParamBase>. That happened
+to compile in C++17; with C++23's constexpr std::vector/std::unique_ptr
+the instantiation happens in the header and fails with "invalid
+application of sizeof to an incomplete type". Declare the special members
+and SetArg in the header and default/define them in op_args.cpp, where
+fusion_invoke_params.hpp makes the type complete.
+
+Fixes all 50 MIOpen translation units that failed a -std=c++23
+-fsyntax-only dry run; they still build with the original standard.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ .../src/include/miopen/fusion/fusion_op_args.hpp | 16 ++++++++++------
+ projects/miopen/src/op_args.cpp                  | 13 +++++++++++++
+ 2 files changed, 23 insertions(+), 6 deletions(-)
+
+diff --git a/projects/miopen/src/include/miopen/fusion/fusion_op_args.hpp b/projects/miopen/src/include/miopen/fusion/fusion_op_args.hpp
+index d6895ded9..e022bb70c 100644
+--- a/projects/miopen/src/include/miopen/fusion/fusion_op_args.hpp
++++ b/projects/miopen/src/include/miopen/fusion/fusion_op_args.hpp
+@@ -34,16 +34,20 @@ namespace fusion {
+ struct FusionOpInvokeParamBase;
+ } // namespace fusion
+ 
++// FusionOpInvokeParamBase is incomplete here. Every member that can destroy a
++// unique_ptr<FusionOpInvokeParamBase> is defined out of line in op_args.cpp,
++// where the type is complete; inline definitions fail to compile once the
++// vector/unique_ptr members are constexpr (C++23).
+ struct OperatorArgs : miopenOperatorArgs
+ {
++    OperatorArgs();
++    ~OperatorArgs();
++    OperatorArgs(OperatorArgs&&) noexcept;
++    OperatorArgs& operator=(OperatorArgs&&) noexcept;
++
+     std::vector<std::unique_ptr<fusion::FusionOpInvokeParamBase>> params;
+     friend std::ostream& operator<<(std::ostream& stream, const OperatorArgs& x);
+-    void SetArg(size_t idx, std::unique_ptr<fusion::FusionOpInvokeParamBase>&& arg)
+-    {
+-        if(params.size() < (idx + 1))
+-            params.resize(idx + 1);
+-        params[idx] = std::move(arg);
+-    }
++    void SetArg(size_t idx, std::unique_ptr<fusion::FusionOpInvokeParamBase>&& arg);
+ };
+ 
+ } // namespace miopen
+diff --git a/projects/miopen/src/op_args.cpp b/projects/miopen/src/op_args.cpp
+index f78ac37e1..997a10a2f 100644
+--- a/projects/miopen/src/op_args.cpp
++++ b/projects/miopen/src/op_args.cpp
+@@ -25,9 +25,22 @@
+  *******************************************************************************/
+ #include <ostream>
+ #include <miopen/fusion.hpp>
++#include <miopen/fusion/fusion_invoke_params.hpp>
+ 
+ namespace miopen {
+ 
++OperatorArgs::OperatorArgs()                              = default;
++OperatorArgs::~OperatorArgs()                             = default;
++OperatorArgs::OperatorArgs(OperatorArgs&&) noexcept       = default;
++OperatorArgs& OperatorArgs::operator=(OperatorArgs&&) noexcept = default;
++
++void OperatorArgs::SetArg(size_t idx, std::unique_ptr<fusion::FusionOpInvokeParamBase>&& arg)
++{
++    if(params.size() < (idx + 1))
++        params.resize(idx + 1);
++    params[idx] = std::move(arg);
++}
++
+ // operator args
+ std::ostream& operator<<(std::ostream& stream, const OperatorArgs& /* x */) { return stream; }
+ 

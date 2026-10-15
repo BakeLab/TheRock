@@ -1,0 +1,27 @@
+From c273b7a36d9206089bf04a315a09b9bf1b1586bf Mon Sep 17 00:00:00 2001
+From: Yuanyuan Chen <cyyever@outlook.com>
+Date: Tue, 13 Oct 2026 03:11:36 +0000
+Subject: [PATCH 3/7] Fix Tensile format cache configuration
+
+---
+ shared/tensile/Tensile/Source/CMakeLists.txt | 6 ++++--
+ 1 file changed, 4 insertions(+), 2 deletions(-)
+
+diff --git a/shared/tensile/Tensile/Source/CMakeLists.txt b/shared/tensile/Tensile/Source/CMakeLists.txt
+index b96e308b9..1ebdeb132 100644
+--- a/shared/tensile/Tensile/Source/CMakeLists.txt
++++ b/shared/tensile/Tensile/Source/CMakeLists.txt
+@@ -32,9 +32,11 @@ project(Tensile)
+ 
+ set(TENSILE_USE_HIP      ON CACHE BOOL "Use the Hip runtime.")
+ if(Tensile_LIBRARY_FORMAT MATCHES "msgpack")
+-    set(TENSILE_USE_MSGPACK  ON CACHE BOOL "Use message pack for parsing config files.")
++    set(TENSILE_USE_MSGPACK  ON CACHE BOOL "Use message pack for parsing config files." FORCE)
++    set(TENSILE_USE_LLVM     OFF CACHE BOOL "Use LLVM for parsing config files." FORCE)
+ else()
+-    set(TENSILE_USE_LLVM     ON CACHE BOOL "Use LLVM for parsing config files.")
++    set(TENSILE_USE_MSGPACK  OFF CACHE BOOL "Use message pack for parsing config files." FORCE)
++    set(TENSILE_USE_LLVM     ON CACHE BOOL "Use LLVM for parsing config files." FORCE)
+ endif()
+ set(TENSILE_USE_OPENMP   ON CACHE BOOL "Use OpenMP to improve performance.")
+ set(TENSILE_STATIC_ONLY  ON CACHE BOOL "Disable exposing Tensile symbols in a shared library.")

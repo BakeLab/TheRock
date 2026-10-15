@@ -1,0 +1,55 @@
+From ffad7a76bc1ab569bb0d665a77eb9ca65e2ca1f0 Mon Sep 17 00:00:00 2001
+From: Yuanyuan Chen <cyyever@outlook.com>
+Date: Tue, 13 Oct 2026 03:32:53 +0000
+Subject: [PATCH 4/7] Export Tensile YAML loader from rocBLAS
+
+---
+ projects/rocblas/library/src/CMakeLists.txt                | 7 +++++++
+ .../Tensile/Source/lib/include/Tensile/llvm/Loading.hpp    | 2 +-
+ shared/tensile/Tensile/Source/lib/source/llvm/Loading.cpp  | 2 +-
+ 3 files changed, 9 insertions(+), 2 deletions(-)
+
+diff --git a/projects/rocblas/library/src/CMakeLists.txt b/projects/rocblas/library/src/CMakeLists.txt
+index 09d4a13d1..0ae7a1bc6 100644
+--- a/projects/rocblas/library/src/CMakeLists.txt
++++ b/projects/rocblas/library/src/CMakeLists.txt
+@@ -700,6 +700,13 @@ if( BUILD_WITH_TENSILE )
+ 
+   if( BUILD_SHARED_LIBS )
+     target_link_libraries( rocblas PRIVATE TensileHost )
++    if( TENSILE_USE_LLVM )
++      # Keep this cross-library YAML loader out of the static TensileHost
++      # archive so --exclude-libs=ALL does not hide its explicit export.
++      target_sources( rocblas PRIVATE "${Tensile_SOURCE_DIR}/lib/source/llvm/Loading.cpp" )
++      get_target_property( TensileHost_INCLUDE_DIRS TensileHost INCLUDE_DIRECTORIES )
++      target_include_directories( rocblas PRIVATE ${TensileHost_INCLUDE_DIRS} )
++    endif()
+   endif()
+ 
+   if( NOT BUILD_SHARED_LIBS )
+diff --git a/shared/tensile/Tensile/Source/lib/include/Tensile/llvm/Loading.hpp b/shared/tensile/Tensile/Source/lib/include/Tensile/llvm/Loading.hpp
+index 520df1dad..cc82374db 100644
+--- a/shared/tensile/Tensile/Source/lib/include/Tensile/llvm/Loading.hpp
++++ b/shared/tensile/Tensile/Source/lib/include/Tensile/llvm/Loading.hpp
+@@ -31,7 +31,7 @@
+ namespace Tensile
+ {
+     template <typename MyProblem, typename MySolution>
+-    std::shared_ptr<SolutionLibrary<MyProblem, MySolution>>
++    TENSILE_API std::shared_ptr<SolutionLibrary<MyProblem, MySolution>>
+         LLVMLoadLibraryFile(std::string const&                  filename,
+                             const std::vector<LazyLoadingInit>& preloaded = {});
+ 
+diff --git a/shared/tensile/Tensile/Source/lib/source/llvm/Loading.cpp b/shared/tensile/Tensile/Source/lib/source/llvm/Loading.cpp
+index 4ecd7bebe..63ec5ad03 100644
+--- a/shared/tensile/Tensile/Source/lib/source/llvm/Loading.cpp
++++ b/shared/tensile/Tensile/Source/lib/source/llvm/Loading.cpp
+@@ -98,7 +98,7 @@ namespace Tensile
+         return rv;
+     }
+ 
+-    template std::shared_ptr<SolutionLibrary<ContractionProblem, ContractionSolution>>
++    template TENSILE_API std::shared_ptr<SolutionLibrary<ContractionProblem, ContractionSolution>>
+         LLVMLoadLibraryFile<ContractionProblem, ContractionSolution>(
+             std::string const& filename, const std::vector<LazyLoadingInit>& preloaded);
+ 

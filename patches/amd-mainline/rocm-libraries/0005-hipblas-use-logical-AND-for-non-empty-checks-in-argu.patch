@@ -1,0 +1,466 @@
+From 851be4b18555f62c6beb674381f01eabedadb4f1 Mon Sep 17 00:00:00 2001
+From: Yuanyuan Chen <cyyever@outlook.com>
+Date: Thu, 15 Oct 2026 04:58:41 +0000
+Subject: [PATCH 5/7] hipblas: use logical AND for non-empty checks in argument
+ validation
+
+The solver argument checks used `ptr == NULL && m * n` (and n * nrhs,
+m * nrhs || n * nrhs) to mean "pointer required when the matrix is
+non-empty". The int product can overflow and is flagged by
+-Wint-in-bool-context; test the dimensions with && instead.
+
+Found with a g++ -fsyntax-only -Wall -Wextra scan.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ .../library/src/amd_detail/hipblas.cpp        | 120 +++++++++---------
+ 1 file changed, 60 insertions(+), 60 deletions(-)
+
+diff --git a/projects/hipblas/library/src/amd_detail/hipblas.cpp b/projects/hipblas/library/src/amd_detail/hipblas.cpp
+index 1d838dbd9..4d0ff3a63 100644
+--- a/projects/hipblas/library/src/amd_detail/hipblas.cpp
++++ b/projects/hipblas/library/src/amd_detail/hipblas.cpp
+@@ -29964,7 +29964,7 @@ try
+         *info = -5;
+     else if(ipiv == NULL && n)
+         *info = -6;
+-    else if(B == NULL && n * nrhs)
++    else if(B == NULL && n && nrhs)
+         *info = -7;
+     else if(ldb < std::max(1, n))
+         *info = -8;
+@@ -30005,7 +30005,7 @@ try
+         *info = -5;
+     else if(ipiv == NULL && n)
+         *info = -6;
+-    else if(B == NULL && n * nrhs)
++    else if(B == NULL && n && nrhs)
+         *info = -7;
+     else if(ldb < std::max(1, n))
+         *info = -8;
+@@ -30046,7 +30046,7 @@ try
+         *info = -5;
+     else if(ipiv == NULL && n)
+         *info = -6;
+-    else if(B == NULL && n * nrhs)
++    else if(B == NULL && n && nrhs)
+         *info = -7;
+     else if(ldb < std::max(1, n))
+         *info = -8;
+@@ -30095,7 +30095,7 @@ try
+         *info = -5;
+     else if(ipiv == NULL && n)
+         *info = -6;
+-    else if(B == NULL && n * nrhs)
++    else if(B == NULL && n && nrhs)
+         *info = -7;
+     else if(ldb < std::max(1, n))
+         *info = -8;
+@@ -30146,7 +30146,7 @@ try
+         *info = -5;
+     else if(ipiv == NULL && n)
+         *info = -6;
+-    else if(B == NULL && n * nrhs)
++    else if(B == NULL && n && nrhs)
+         *info = -7;
+     else if(ldb < std::max(1, n))
+         *info = -8;
+@@ -30200,7 +30200,7 @@ try
+         *info = -5;
+     else if(ipiv == NULL && n)
+         *info = -6;
+-    else if(B == NULL && n * nrhs)
++    else if(B == NULL && n && nrhs)
+         *info = -7;
+     else if(ldb < std::max(1, n))
+         *info = -8;
+@@ -30254,7 +30254,7 @@ try
+         *info = -5;
+     else if(ipiv == NULL && n)
+         *info = -6;
+-    else if(B == NULL && n * nrhs)
++    else if(B == NULL && n && nrhs)
+         *info = -7;
+     else if(ldb < std::max(1, n))
+         *info = -8;
+@@ -30308,7 +30308,7 @@ try
+         *info = -5;
+     else if(ipiv == NULL && n)
+         *info = -6;
+-    else if(B == NULL && n * nrhs)
++    else if(B == NULL && n && nrhs)
+         *info = -7;
+     else if(ldb < std::max(1, n))
+         *info = -8;
+@@ -30366,7 +30366,7 @@ try
+         *info = -5;
+     else if(ipiv == NULL && n)
+         *info = -7;
+-    else if(B == NULL && n * nrhs)
++    else if(B == NULL && n && nrhs)
+         *info = -9;
+     else if(ldb < std::max(1, n))
+         *info = -10;
+@@ -30425,7 +30425,7 @@ try
+         *info = -5;
+     else if(ipiv == NULL && n)
+         *info = -7;
+-    else if(B == NULL && n * nrhs)
++    else if(B == NULL && n && nrhs)
+         *info = -9;
+     else if(ldb < std::max(1, n))
+         *info = -10;
+@@ -30484,7 +30484,7 @@ try
+         *info = -5;
+     else if(ipiv == NULL && n)
+         *info = -7;
+-    else if(B == NULL && n * nrhs)
++    else if(B == NULL && n && nrhs)
+         *info = -9;
+     else if(ldb < std::max(1, n))
+         *info = -10;
+@@ -30543,7 +30543,7 @@ try
+         *info = -5;
+     else if(ipiv == NULL && n)
+         *info = -7;
+-    else if(B == NULL && n * nrhs)
++    else if(B == NULL && n && nrhs)
+         *info = -9;
+     else if(ldb < std::max(1, n))
+         *info = -10;
+@@ -30713,11 +30713,11 @@ try
+         *info = -1;
+     else if(n < 0)
+         *info = -2;
+-    else if(A == NULL && m * n)
++    else if(A == NULL && m && n)
+         *info = -3;
+     else if(lda < std::max(1, m))
+         *info = -4;
+-    else if(tau == NULL && m * n)
++    else if(tau == NULL && m && n)
+         *info = -5;
+     else
+         *info = 0;
+@@ -30745,11 +30745,11 @@ try
+         *info = -1;
+     else if(n < 0)
+         *info = -2;
+-    else if(A == NULL && m * n)
++    else if(A == NULL && m && n)
+         *info = -3;
+     else if(lda < std::max(1, m))
+         *info = -4;
+-    else if(tau == NULL && m * n)
++    else if(tau == NULL && m && n)
+         *info = -5;
+     else
+         *info = 0;
+@@ -30777,11 +30777,11 @@ try
+         *info = -1;
+     else if(n < 0)
+         *info = -2;
+-    else if(A == NULL && m * n)
++    else if(A == NULL && m && n)
+         *info = -3;
+     else if(lda < std::max(1, m))
+         *info = -4;
+-    else if(tau == NULL && m * n)
++    else if(tau == NULL && m && n)
+         *info = -5;
+     else
+         *info = 0;
+@@ -30814,11 +30814,11 @@ try
+         *info = -1;
+     else if(n < 0)
+         *info = -2;
+-    else if(A == NULL && m * n)
++    else if(A == NULL && m && n)
+         *info = -3;
+     else if(lda < std::max(1, m))
+         *info = -4;
+-    else if(tau == NULL && m * n)
++    else if(tau == NULL && m && n)
+         *info = -5;
+     else
+         *info = 0;
+@@ -30853,11 +30853,11 @@ try
+         *info = -1;
+     else if(n < 0)
+         *info = -2;
+-    else if(A == NULL && m * n)
++    else if(A == NULL && m && n)
+         *info = -3;
+     else if(lda < std::max(1, m))
+         *info = -4;
+-    else if(tau == NULL && m * n)
++    else if(tau == NULL && m && n)
+         *info = -5;
+     else if(batch_count < 0)
+         *info = -7;
+@@ -30888,11 +30888,11 @@ try
+         *info = -1;
+     else if(n < 0)
+         *info = -2;
+-    else if(A == NULL && m * n)
++    else if(A == NULL && m && n)
+         *info = -3;
+     else if(lda < std::max(1, m))
+         *info = -4;
+-    else if(tau == NULL && m * n)
++    else if(tau == NULL && m && n)
+         *info = -5;
+     else if(batch_count < 0)
+         *info = -7;
+@@ -30923,11 +30923,11 @@ try
+         *info = -1;
+     else if(n < 0)
+         *info = -2;
+-    else if(A == NULL && m * n)
++    else if(A == NULL && m && n)
+         *info = -3;
+     else if(lda < std::max(1, m))
+         *info = -4;
+-    else if(tau == NULL && m * n)
++    else if(tau == NULL && m && n)
+         *info = -5;
+     else if(batch_count < 0)
+         *info = -7;
+@@ -30964,11 +30964,11 @@ try
+         *info = -1;
+     else if(n < 0)
+         *info = -2;
+-    else if(A == NULL && m * n)
++    else if(A == NULL && m && n)
+         *info = -3;
+     else if(lda < std::max(1, m))
+         *info = -4;
+-    else if(tau == NULL && m * n)
++    else if(tau == NULL && m && n)
+         *info = -5;
+     else if(batch_count < 0)
+         *info = -7;
+@@ -31008,11 +31008,11 @@ try
+         *info = -1;
+     else if(n < 0)
+         *info = -2;
+-    else if(A == NULL && m * n)
++    else if(A == NULL && m && n)
+         *info = -3;
+     else if(lda < std::max(1, m))
+         *info = -4;
+-    else if(tau == NULL && m * n)
++    else if(tau == NULL && m && n)
+         *info = -6;
+     else if(batch_count < 0)
+         *info = -9;
+@@ -31045,11 +31045,11 @@ try
+         *info = -1;
+     else if(n < 0)
+         *info = -2;
+-    else if(A == NULL && m * n)
++    else if(A == NULL && m && n)
+         *info = -3;
+     else if(lda < std::max(1, m))
+         *info = -4;
+-    else if(tau == NULL && m * n)
++    else if(tau == NULL && m && n)
+         *info = -6;
+     else if(batch_count < 0)
+         *info = -9;
+@@ -31082,11 +31082,11 @@ try
+         *info = -1;
+     else if(n < 0)
+         *info = -2;
+-    else if(A == NULL && m * n)
++    else if(A == NULL && m && n)
+         *info = -3;
+     else if(lda < std::max(1, m))
+         *info = -4;
+-    else if(tau == NULL && m * n)
++    else if(tau == NULL && m && n)
+         *info = -6;
+     else if(batch_count < 0)
+         *info = -9;
+@@ -31127,11 +31127,11 @@ try
+         *info = -1;
+     else if(n < 0)
+         *info = -2;
+-    else if(A == NULL && m * n)
++    else if(A == NULL && m && n)
+         *info = -3;
+     else if(lda < std::max(1, m))
+         *info = -4;
+-    else if(tau == NULL && m * n)
++    else if(tau == NULL && m && n)
+         *info = -6;
+     else if(batch_count < 0)
+         *info = -9;
+@@ -31178,11 +31178,11 @@ try
+         *info = -3;
+     else if(nrhs < 0)
+         *info = -4;
+-    else if(A == NULL && m * n)
++    else if(A == NULL && m && n)
+         *info = -5;
+     else if(lda < m)
+         *info = -6;
+-    else if(B == NULL && (m * nrhs || n * nrhs))
++    else if(B == NULL && (m || n) && nrhs)
+         *info = -7;
+     else if(ldb < m || ldb < n)
+         *info = -8;
+@@ -31230,11 +31230,11 @@ try
+         *info = -3;
+     else if(nrhs < 0)
+         *info = -4;
+-    else if(A == NULL && m * n)
++    else if(A == NULL && m && n)
+         *info = -5;
+     else if(lda < m)
+         *info = -6;
+-    else if(B == NULL && (m * nrhs || n * nrhs))
++    else if(B == NULL && (m || n) && nrhs)
+         *info = -7;
+     else if(ldb < m || ldb < n)
+         *info = -8;
+@@ -31282,11 +31282,11 @@ try
+         *info = -3;
+     else if(nrhs < 0)
+         *info = -4;
+-    else if(A == NULL && m * n)
++    else if(A == NULL && m && n)
+         *info = -5;
+     else if(lda < m)
+         *info = -6;
+-    else if(B == NULL && (m * nrhs || n * nrhs))
++    else if(B == NULL && (m || n) && nrhs)
+         *info = -7;
+     else if(ldb < m || ldb < n)
+         *info = -8;
+@@ -31334,11 +31334,11 @@ try
+         *info = -3;
+     else if(nrhs < 0)
+         *info = -4;
+-    else if(A == NULL && m * n)
++    else if(A == NULL && m && n)
+         *info = -5;
+     else if(lda < m)
+         *info = -6;
+-    else if(B == NULL && (m * nrhs || n * nrhs))
++    else if(B == NULL && (m || n) && nrhs)
+         *info = -7;
+     else if(ldb < m || ldb < n)
+         *info = -8;
+@@ -31388,11 +31388,11 @@ try
+         *info = -3;
+     else if(nrhs < 0)
+         *info = -4;
+-    else if(A == NULL && m * n)
++    else if(A == NULL && m && n)
+         *info = -5;
+     else if(lda < m)
+         *info = -6;
+-    else if(B == NULL && (m * nrhs || n * nrhs))
++    else if(B == NULL && (m || n) && nrhs)
+         *info = -7;
+     else if(ldb < m || ldb < n)
+         *info = -8;
+@@ -31445,11 +31445,11 @@ try
+         *info = -3;
+     else if(nrhs < 0)
+         *info = -4;
+-    else if(A == NULL && m * n)
++    else if(A == NULL && m && n)
+         *info = -5;
+     else if(lda < m)
+         *info = -6;
+-    else if(B == NULL && (m * nrhs || n * nrhs))
++    else if(B == NULL && (m || n) && nrhs)
+         *info = -7;
+     else if(ldb < m || ldb < n)
+         *info = -8;
+@@ -31502,11 +31502,11 @@ try
+         *info = -3;
+     else if(nrhs < 0)
+         *info = -4;
+-    else if(A == NULL && m * n)
++    else if(A == NULL && m && n)
+         *info = -5;
+     else if(lda < m)
+         *info = -6;
+-    else if(B == NULL && (m * nrhs || n * nrhs))
++    else if(B == NULL && (m || n) && nrhs)
+         *info = -7;
+     else if(ldb < m || ldb < n)
+         *info = -8;
+@@ -31559,11 +31559,11 @@ try
+         *info = -3;
+     else if(nrhs < 0)
+         *info = -4;
+-    else if(A == NULL && m * n)
++    else if(A == NULL && m && n)
+         *info = -5;
+     else if(lda < m)
+         *info = -6;
+-    else if(B == NULL && (m * nrhs || n * nrhs))
++    else if(B == NULL && (m || n) && nrhs)
+         *info = -7;
+     else if(ldb < m || ldb < n)
+         *info = -8;
+@@ -31619,11 +31619,11 @@ try
+         *info = -3;
+     else if(nrhs < 0)
+         *info = -4;
+-    else if(A == NULL && m * n)
++    else if(A == NULL && m && n)
+         *info = -5;
+     else if(lda < m)
+         *info = -6;
+-    else if(B == NULL && (m * nrhs || n * nrhs))
++    else if(B == NULL && (m || n) && nrhs)
+         *info = -8;
+     else if(ldb < m || ldb < n)
+         *info = -9;
+@@ -31680,11 +31680,11 @@ try
+         *info = -3;
+     else if(nrhs < 0)
+         *info = -4;
+-    else if(A == NULL && m * n)
++    else if(A == NULL && m && n)
+         *info = -5;
+     else if(lda < m)
+         *info = -6;
+-    else if(B == NULL && (m * nrhs || n * nrhs))
++    else if(B == NULL && (m || n) && nrhs)
+         *info = -8;
+     else if(ldb < m || ldb < n)
+         *info = -9;
+@@ -31741,11 +31741,11 @@ try
+         *info = -3;
+     else if(nrhs < 0)
+         *info = -4;
+-    else if(A == NULL && m * n)
++    else if(A == NULL && m && n)
+         *info = -5;
+     else if(lda < m)
+         *info = -6;
+-    else if(B == NULL && (m * nrhs || n * nrhs))
++    else if(B == NULL && (m || n) && nrhs)
+         *info = -8;
+     else if(ldb < m || ldb < n)
+         *info = -9;
+@@ -31802,11 +31802,11 @@ try
+         *info = -3;
+     else if(nrhs < 0)
+         *info = -4;
+-    else if(A == NULL && m * n)
++    else if(A == NULL && m && n)
+         *info = -5;
+     else if(lda < m)
+         *info = -6;
+-    else if(B == NULL && (m * nrhs || n * nrhs))
++    else if(B == NULL && (m || n) && nrhs)
+         *info = -8;
+     else if(ldb < m || ldb < n)
+         *info = -9;
