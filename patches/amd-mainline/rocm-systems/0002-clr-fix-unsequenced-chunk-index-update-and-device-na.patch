@@ -1,34 +1,37 @@
-From c0c06d148a3d9784399ad486257ea34629b19ddd Mon Sep 17 00:00:00 2001
+From 1c433179e7284eb05e81c20b62173aa057163327 Mon Sep 17 00:00:00 2001
 From: Yuanyuan Chen <cyyever@outlook.com>
 Date: Thu, 15 Oct 2026 04:58:14 +0000
-Subject: [PATCH 2/3] clr: fix unsequenced chunk index update and device name
- copy
+Subject: [PATCH] clr: fix unsequenced chunk index update and device name
+ termination
 
 - rocvirtual: `active_chunk_ = ++active_chunk_ % n` modifies active_chunk_
   twice without sequencing (-Wsequence-point); use (active_chunk_ + 1) % n.
-- hip_device: strncpy into hipDeviceProp_t::name was bounded by the source
-  array size (boardName_[128]) rather than the destination; bound by the
-  destination and always NUL-terminate.
+- hip_device: the strncpy into hipDeviceProp_t::name is bounded by the
+  source array (boardName_[128]). That is safe because the destination is
+  larger, but the copy relies on boardName_ being NUL-terminated. Keep the
+  source bound, static_assert that the destination is larger, and write
+  the terminator explicitly.
 
 Found with a g++ -fsyntax-only -Wall -Wextra scan.
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 ---
- projects/clr/hipamd/src/hip_device.cpp         | 3 ++-
+ projects/clr/hipamd/src/hip_device.cpp         | 3 +++
  projects/clr/rocclr/device/rocm/rocvirtual.cpp | 2 +-
- 2 files changed, 3 insertions(+), 2 deletions(-)
+ 2 files changed, 4 insertions(+), 1 deletion(-)
 
 diff --git a/projects/clr/hipamd/src/hip_device.cpp b/projects/clr/hipamd/src/hip_device.cpp
-index 6bceb17afb..499959f982 100644
+index 6bceb17afb..013f2a6dc7 100644
 --- a/projects/clr/hipamd/src/hip_device.cpp
 +++ b/projects/clr/hipamd/src/hip_device.cpp
-@@ -643,7 +643,8 @@ hipError_t ihipGetDeviceProperties(hipDeviceProp_tR0600* props, int device) {
+@@ -643,7 +643,10 @@ hipError_t ihipGetDeviceProperties(hipDeviceProp_tR0600* props, int device) {
  
    const auto& info = deviceHandle->info();
    const auto& isa = deviceHandle->isa();
--  ::strncpy(deviceProps.name, info.boardName_, sizeof(info.boardName_));
-+  ::strncpy(deviceProps.name, info.boardName_, sizeof(deviceProps.name) - 1);
-+  deviceProps.name[sizeof(deviceProps.name) - 1] = '\0';
++  static_assert(sizeof(deviceProps.name) > sizeof(info.boardName_),
++                "hipDeviceProp_t::name must hold boardName_ and a terminator");
+   ::strncpy(deviceProps.name, info.boardName_, sizeof(info.boardName_));
++  deviceProps.name[sizeof(info.boardName_)] = '\0';
    memcpy(deviceProps.uuid.bytes, info.uuid_, sizeof(info.uuid_));
    deviceProps.totalGlobalMem = info.globalMemSize_;
    const size_t ldsPerMultiprocessor = static_cast<size_t>(info.localMemSizePerCU_) *
