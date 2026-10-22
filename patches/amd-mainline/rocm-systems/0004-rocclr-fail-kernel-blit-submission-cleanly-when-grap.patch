@@ -1,0 +1,85 @@
+From 553c702694501761ad5184bc9d1e4a26f90d1a28 Mon Sep 17 00:00:00 2001
+From: =?UTF-8?q?Tiarn=C3=A1n=20de=20Burca?=
+ <59666291+tdeburca@users.noreply.github.com>
+Date: Tue, 11 Aug 2026 21:39:37 +0100
+Subject: [PATCH 4/8] rocclr: fail kernel/blit submission cleanly when graph
+ kernarg allocation fails
+
+GraphKernelArgManager::AllocKernArg deliberately returns nullptr when its
+pool cannot grow (AllocGraphKernargPool -> Device::deviceLocalAlloc fails
+once device memory is exhausted), but none of its three consumers check
+the result:
+
+  - VirtualGPU::submitKernelInternal (graph-capture branch) passes it to
+    nontemporalMemcpy, whose first 16-byte _mm_stream_si128 store then
+    writes to address 0 and the process dies with SIGSEGV inside
+    libamdhip64 (offset 0x4632ef in the 7.2.70203 build).
+  - KernelBlitManager::fillBuffer1D / fillBuffer2D memcpy the fill
+    pattern into the returned buffer unchecked, with the same failure
+    mode for fills issued during graph capture.
+
+Observed in production on gfx1100 (RX 7900 XTX) running llama.cpp with
+HIP graphs under near-exhausted VRAM: six identical SIGSEGVs at the same
+offset across three application builds. Expected behaviour is a failed
+launch surfacing an error, not a runtime crash.
+
+Return false through the established failure idiom of each function
+(cf. the "No local memory available" path in submitKernelInternal), so
+the command status is set and the application sees a launch failure.
+
+The non-graph allocKernArg path needs no check: ManagedBuffer::Acquire
+recycles a fixed ring and cannot return null.
+
+Fixes: https://github.com/ROCm/rocm-systems/issues/10021 (part 1 of 2)
+
+Signed-off-by: Tiernan de Burca <tdeburca@gmail.com>
+Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
+---
+ projects/clr/rocclr/device/rocm/rocblit.cpp    | 8 ++++++++
+ projects/clr/rocclr/device/rocm/rocvirtual.cpp | 4 ++++
+ 2 files changed, 12 insertions(+)
+
+diff --git a/projects/clr/rocclr/device/rocm/rocblit.cpp b/projects/clr/rocclr/device/rocm/rocblit.cpp
+index 5a3d575552..7ee01b8bca 100644
+--- a/projects/clr/rocclr/device/rocm/rocblit.cpp
++++ b/projects/clr/rocclr/device/rocm/rocblit.cpp
+@@ -2471,6 +2471,10 @@ bool KernelBlitManager::fillBuffer1D(device::Memory& memory, const void* pattern
+       isGraphPktCapturing
+           ? (unsigned char*)gpu().command()->getGraphKernArg(kCBSize, kCBAlignment, dev().index())
+           : (unsigned char*)gpu().allocKernArg(kCBSize, kCBAlignment);
++  if (kernArgBase == nullptr) {
++    LogError("Failed to allocate fill constant buffer (out of memory)");
++    return false;
++  }
+ 
+   assert((patternSize == 1 || patternSize == 2 || patternSize == 4 || patternSize == 8 ||
+           patternSize == 16) &&
+@@ -2651,6 +2655,10 @@ bool KernelBlitManager::fillBuffer2D(device::Memory& memory, const void* pattern
+     auto constBuf = isGraphPktCapturing
+                         ? gpu().command()->getGraphKernArg(kCBSize, kCBAlignment, dev().index())
+                         : gpu().allocKernArg(kCBSize, kCBAlignment);
++    if (constBuf == nullptr) {
++      LogError("Failed to allocate fill constant buffer (out of memory)");
++      return false;
++    }
+     memcpy(constBuf, pattern, patternSize);
+ 
+     constexpr bool kDirectVa = true;
+diff --git a/projects/clr/rocclr/device/rocm/rocvirtual.cpp b/projects/clr/rocclr/device/rocm/rocvirtual.cpp
+index 4a0ea2f97d..9e3d432941 100644
+--- a/projects/clr/rocclr/device/rocm/rocvirtual.cpp
++++ b/projects/clr/rocclr/device/rocm/rocvirtual.cpp
+@@ -4943,6 +4943,10 @@ bool VirtualGPU::submitKernelInternal(const amd::NDRangeContainer& sizes, const
+     if (isGraphCapture) {
+       argBuffer = command_->getGraphKernArg(gpuKernel.KernargSegmentByteSize(),
+                                             gpuKernel.KernargSegmentAlignment(), dev().index());
++      if (argBuffer == nullptr) {
++        LogError("Failed to allocate graph kernel argument buffer (out of memory)");
++        return false;
++      }
+       command_->SetKernelName(gpuKernel.getDemangledName());
+     } else {
+       argBuffer = reinterpret_cast<address>(
+-- 
+2.56.0
+

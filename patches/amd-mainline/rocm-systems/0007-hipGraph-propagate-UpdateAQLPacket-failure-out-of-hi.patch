@@ -1,0 +1,53 @@
+From dbc7fff5e2a06944ab487f8f603a2d3d3cafee6c Mon Sep 17 00:00:00 2001
+From: Ohgur <ohgurlabs@github.com>
+Date: Tue, 25 Aug 2026 10:58:35 -0700
+Subject: [PATCH 7/8] hipGraph: propagate UpdateAQLPacket failure out of
+ hipGraphExecUpdate
+
+hipGraphExecUpdate's bulk update loop assigns UpdateAQLPacket()'s error to
+'status' without checking it and falls through to HIP_RETURN(hipSuccess).
+Under device-memory exhaustion the packet re-capture legitimately fails
+(with the checks from PR #10022); the exec keeps the previously captured
+packet and the next launch executes it: silent wrong output, and with
+kernarg-pool recycling eventually a malformed AQL packet (CP fault + queue
+abort observed on gfx1100). All other UpdateAQLPacket call sites already
+propagate their status.
+
+Surface the failure as hipErrorGraphExecUpdateFailure with hErrorNode_out
+and hipGraphExecUpdateError set, matching the SetParams failure paths in
+the same function. Frameworks that destroy and re-instantiate on this code
+(llama.cpp/ggml) recover in place; validated on gfx1100 against the
+therock-7.14 tag: 32 deep inference runs with zero crashes or output
+corruption, and a recovery probe verifying 102,600 consecutive bit-exact
+launches across 25 destroy/re-instantiate cycles at 0 MiB free.
+
+Related: #10021, #10022
+---
+ projects/clr/hipamd/src/hip_graph.cpp | 11 +++++++++++
+ 1 file changed, 11 insertions(+)
+
+diff --git a/projects/clr/hipamd/src/hip_graph.cpp b/projects/clr/hipamd/src/hip_graph.cpp
+index 3d57a19f2c..9692831f85 100644
+--- a/projects/clr/hipamd/src/hip_graph.cpp
++++ b/projects/clr/hipamd/src/hip_graph.cpp
+@@ -2830,6 +2830,17 @@ hipError_t hipGraphExecUpdate(hipGraphExec_t hGraphExec, hipGraph_t hGraph,
+         auto graphExec = reinterpret_cast<hip::GraphExecBase*>(hGraphExec);
+         if (newGraphNodes[i]->GraphCaptureEnabled()) {
+           status = graphExec->UpdateAQLPacket(reinterpret_cast<hip::GraphKernelNode*>(oldGraphExecNodes[i]));
++          if (status != hipSuccess) {
++            // A packet re-capture failure (e.g. kernarg allocation under device-memory
++            // exhaustion) leaves the exec holding the previously captured packet.
++            // Reporting success here makes the next launch execute that stale packet:
++            // silent wrong output, and with kernarg-pool recycling a malformed AQL
++            // packet (see issue #10021). Surface the failure instead, matching the
++            // SetParams failure paths above.
++            *hErrorNode_out = reinterpret_cast<hipGraphNode_t>(newGraphNodes[i]);
++            *updateResult_out = hipGraphExecUpdateError;
++            HIP_RETURN(hipErrorGraphExecUpdateFailure);
++          }
+         }
+       }
+     } else {
+-- 
+2.56.0
+
