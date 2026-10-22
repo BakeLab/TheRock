@@ -1,7 +1,7 @@
-From dbc7fff5e2a06944ab487f8f603a2d3d3cafee6c Mon Sep 17 00:00:00 2001
+From ccca622cfac73799378c84997624483af9665f9d Mon Sep 17 00:00:00 2001
 From: Ohgur <ohgurlabs@github.com>
 Date: Tue, 25 Aug 2026 10:58:35 -0700
-Subject: [PATCH 7/8] hipGraph: propagate UpdateAQLPacket failure out of
+Subject: [PATCH 7/9] hipGraph: propagate UpdateAQLPacket failure out of
  hipGraphExecUpdate
 
 hipGraphExecUpdate's bulk update loop assigns UpdateAQLPacket()'s error to

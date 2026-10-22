@@ -1,8 +1,8 @@
-From c8b2790374ab315ae91b10d17c757280df677de5 Mon Sep 17 00:00:00 2001
+From 2ff609e8dded8c36bee7f62aa2599f04e10d4645 Mon Sep 17 00:00:00 2001
 From: =?UTF-8?q?Tiarn=C3=A1n=20de=20Burca?=
  <59666291+tdeburca@users.noreply.github.com>
 Date: Tue, 11 Aug 2026 21:39:51 +0100
-Subject: [PATCH 5/8] hipGraph: propagate kernarg-capture submit failure out of
+Subject: [PATCH 5/9] hipGraph: propagate kernarg-capture submit failure out of
  CaptureAndFormPacket
 MIME-Version: 1.0
 Content-Type: text/plain; charset=UTF-8

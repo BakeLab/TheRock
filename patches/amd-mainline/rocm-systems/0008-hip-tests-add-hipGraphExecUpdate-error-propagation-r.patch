@@ -1,7 +1,7 @@
-From 5bd2cf4063e057ce65a4dd54aeab2e7d6ce1f0f0 Mon Sep 17 00:00:00 2001
+From 17b53d034a7af46b56e0e2104ee742a930047809 Mon Sep 17 00:00:00 2001
 From: Ohgur <ohgurlabs@github.com>
 Date: Tue, 25 Aug 2026 15:11:22 -0700
-Subject: [PATCH 8/8] hip-tests: add hipGraphExecUpdate error-propagation
+Subject: [PATCH 8/9] hip-tests: add hipGraphExecUpdate error-propagation
  regression test
 
 Unit_hipGraphExecUpdate_ExhaustionErrorPropagation asserts the contract this

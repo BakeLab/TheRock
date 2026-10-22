@@ -1,8 +1,8 @@
-From 74208993acc9d07ab80a88047b97b154d8d2adcc Mon Sep 17 00:00:00 2001
+From 889e0a1442a96e66532e7a5a8b4fd541faab64d5 Mon Sep 17 00:00:00 2001
 From: =?UTF-8?q?Tiarn=C3=A1n=20de=20Burca?=
  <5369673+nycdubliner@users.noreply.github.com>
 Date: Tue, 11 Aug 2026 21:55:54 +0100
-Subject: [PATCH 6/8] hip-tests: add hipGraphExecUpdate regression test for
+Subject: [PATCH 6/9] hip-tests: add hipGraphExecUpdate regression test for
  kernarg exhaustion
 
 Unit_hipGraphExecUpdate_KernargPoolExhaustion builds a one-kernel graph
