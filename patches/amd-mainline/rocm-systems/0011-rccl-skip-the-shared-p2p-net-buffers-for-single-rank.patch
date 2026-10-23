@@ -1,0 +1,52 @@
+From 0a9e8a0480e80c3cf84a337b75af18ce5d89d1d0 Mon Sep 17 00:00:00 2001
+From: Yuanyuan Chen <cyyever@outlook.com>
+Date: Fri, 23 Oct 2026 06:00:01 +0000
+Subject: [PATCH] rccl: skip the shared p2p net buffers for single-rank
+ communicators
+
+Without runtime connect, which needs cuMem and is therefore off on
+ROCm, every communicator asks its local net proxy to allocate the
+shared p2p buffers at init: p2pnChannels * NCCL_SHARED_STEPS *
+p2pChunkSize, 512 MiB on gfx1201. A single-rank communicator runs its
+collectives and self send/recv as local copies and never uses them.
+Skip the local and PXN shared init when nRanks == 1.
+
+A single-process vLLM engine creates six single-rank groups and lost
+about 3.6 GiB of device memory to them before its memory check.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ projects/rccl/src/init.cc | 15 +++++++++------
+ 1 file changed, 9 insertions(+), 6 deletions(-)
+
+diff --git a/projects/rccl/src/init.cc b/projects/rccl/src/init.cc
+index 49f29b5611..4d869fd870 100644
+--- a/projects/rccl/src/init.cc
++++ b/projects/rccl/src/init.cc
+@@ -2354,14 +2354,17 @@ static ncclResult_t initTransportsRank(struct ncclComm* comm, struct ncclComm* p
+       }
+     }
+ 
+-    // Connect to local net proxy
+-    NCCLCHECKGOTO(ncclProxyConnect(comm, TRANSPORT_NET, 1, comm->rank, &proxyConn), ret, fail);
+-    NCCLCHECKGOTO(ncclProxyCallBlocking(comm, &proxyConn, ncclProxyMsgSharedInit, &comm->p2pnChannels, sizeof(int),
+-                                        NULL, 0),
+-                  ret, fail);
++    // Connect to local net proxy. A single-rank communicator runs its collectives and
++    // self send/recv as local copies, so it would never use the shared p2p net buffers.
++    if (comm->nRanks > 1) {
++      NCCLCHECKGOTO(ncclProxyConnect(comm, TRANSPORT_NET, 1, comm->rank, &proxyConn), ret, fail);
++      NCCLCHECKGOTO(ncclProxyCallBlocking(comm, &proxyConn, ncclProxyMsgSharedInit, &comm->p2pnChannels, sizeof(int),
++                                          NULL, 0),
++                    ret, fail);
++    }
+ 
+     // Then to remote ones when using PXN
+-    if (ncclPxnDisable(comm) == 0) {
++    if (comm->nRanks > 1 && ncclPxnDisable(comm) == 0) {
+       int nranks;
+       NCCLCHECKGOTO(ncclTopoGetPxnRanks(comm, &pxnPeers, &nranks), ret, fail);
+       for (int r = 0; r < nranks; r++) {
+-- 
+2.56.0
+
