@@ -1,7 +1,7 @@
-From 8e62b00eeb1976b33971f6c5b4938015e228a28f Mon Sep 17 00:00:00 2001
+From e7a63bf33dac3e302504d3541816a81b33536ecd Mon Sep 17 00:00:00 2001
 From: Yuanyuan Chen <cyyever@outlook.com>
 Date: Thu, 22 Oct 2026 06:05:16 +0000
-Subject: [PATCH 9/9] hipGraph: reuse kernel-argument slots across exec updates
+Subject: [PATCH] hipGraph: reuse kernel-argument slots across exec updates
 
 Every hipGraphExecUpdate / hipGraphExec*SetParams re-captures the node's
 packet and bump-allocates a fresh kernel-argument slot; nothing is
@@ -11,29 +11,41 @@ without bound and eventually exhausts it (#10713, the trigger for
 #10021).
 
 Track the slots each node's packets use. When an update commits, the
-node's previous slots are retired; they become reusable once no launch
-that may still read them is in flight (the in-flight count, bracketed
-by Run and the launch-completion callback, has dropped to zero since).
-A failed capture or update discards the new slots and keeps the old
-ones. Free slots are kept in a (device, size)-ordered multimap for
-best-fit reuse.
+node's previous slots are retired with the epoch of the last submitted
+launch; each launch takes an epoch in Run and returns it from its
+completion callback, and a retired slot is reused once no launch up to
+its epoch is in flight, even while later launches keep the exec busy.
+A same-device launch that fails partway drains its streams before the
+callback runs. A failed capture or update discards the new slots and
+keeps the old ones. Free slots are kept in a (device, size)-ordered
+multimap for best-fit reuse.
 
-Closes #10713
+Also register the hipGraphExecUpdate cases added by this series in the
+hip-tests YAML config, which HIP_TEST_CASE requires.
 
 Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 ---
- .../clr/hipamd/src/hip_graph_internal.cpp     | 109 ++++++++++-
- .../clr/hipamd/src/hip_graph_internal.hpp     |  46 ++++-
+ .../clr/hipamd/src/hip_graph_internal.cpp     | 132 +++++++++-
+ .../clr/hipamd/src/hip_graph_internal.hpp     |  56 ++++-
+ .../catch/config/configs/unit/graph.yaml      |  18 ++
  .../hip-tests/catch/unit/graph/CMakeLists.txt |   1 +
- .../hipGraphExecUpdate_kernarg_reuse_test.cc  | 179 ++++++++++++++++++
- 4 files changed, 329 insertions(+), 6 deletions(-)
+ .../hipGraphExecUpdate_kernarg_reuse_test.cc  | 233 ++++++++++++++++++
+ 5 files changed, 434 insertions(+), 6 deletions(-)
  create mode 100644 projects/hip-tests/catch/unit/graph/hipGraphExecUpdate_kernarg_reuse_test.cc
 
 diff --git a/projects/clr/hipamd/src/hip_graph_internal.cpp b/projects/clr/hipamd/src/hip_graph_internal.cpp
-index aeb45896e0..f97f444164 100644
+index aeb45896e0..02677fbdd9 100644
 --- a/projects/clr/hipamd/src/hip_graph_internal.cpp
 +++ b/projects/clr/hipamd/src/hip_graph_internal.cpp
-@@ -1977,6 +1977,29 @@ void GraphExecSegmented::PacketBatch::restorePatchListPointers(
+@@ -1566,6 +1566,7 @@ struct GraphLaunchCleanup {
+   GraphExecBase* exec;
+   amd::Device* device;
+   std::vector<void*> signal_set;
++  uint64_t kernarg_epoch = 0;  //! 0: no kernarg manager
+ };
+ 
+ // ================================================================================================
+@@ -1977,6 +1978,29 @@ void GraphExecSegmented::PacketBatch::restorePatchListPointers(
  }
  
  // ================================================================================================
@@ -63,7 +75,7 @@ index aeb45896e0..f97f444164 100644
  hipError_t GraphExecSegmented::CaptureAndFormPacketsForGraph() {
    // Fixme: Only single stream child graph nodes are supported.
    hipError_t status = hipSuccess;
-@@ -2047,6 +2070,7 @@ hipError_t GraphExecSegmented::CaptureAndFormPacketsForGraph() {
+@@ -2047,6 +2071,7 @@ hipError_t GraphExecSegmented::CaptureAndFormPacketsForGraph() {
            std::vector<uint8_t*> nodePackets;
            std::vector<const std::string*> nodeKernelNames;
            std::vector<uint8_t*> nodeMetadataPackets;
@@ -71,7 +83,7 @@ index aeb45896e0..f97f444164 100644
            status = currentNode->CaptureAndFormPacket(GetKernelArgManager(), &nodePackets,
                                                       &nodeKernelNames, &nodeMetadataPackets);
  
-@@ -2054,6 +2078,7 @@ hipError_t GraphExecSegmented::CaptureAndFormPacketsForGraph() {
+@@ -2054,6 +2079,7 @@ hipError_t GraphExecSegmented::CaptureAndFormPacketsForGraph() {
              LogError("Packet capture failed");
              return status;
            }
@@ -79,7 +91,7 @@ index aeb45896e0..f97f444164 100644
  
            // Create NodeRange for this node
            // RangeIndex is 0 at the start
-@@ -2251,6 +2276,7 @@ hipError_t GraphExecSegmented::UpdateAQLPacket(hip::GraphNode* node) {
+@@ -2251,6 +2277,7 @@ hipError_t GraphExecSegmented::UpdateAQLPacket(hip::GraphNode* node) {
        if (saved_enabled_state == 0) {
          node->SetEnabled(1);
        }
@@ -87,7 +99,7 @@ index aeb45896e0..f97f444164 100644
        hipError_t status = node->CaptureAndFormPacket(kernArgManager_, &newPackets,
                                                                        &newKernelNames,
                                                                        &newMetadataPackets);
-@@ -2361,6 +2387,7 @@ hipError_t GraphExecSegmented::UpdateAQLPacket(hip::GraphNode* node) {
+@@ -2361,6 +2388,7 @@ hipError_t GraphExecSegmented::UpdateAQLPacket(hip::GraphNode* node) {
            }
          }
        }
@@ -95,20 +107,58 @@ index aeb45896e0..f97f444164 100644
        return hipSuccess;
      }
    }
-@@ -3178,6 +3205,12 @@ hipError_t GraphExecSegmented::Run(hip::Stream* launch_stream) {
+@@ -2497,6 +2525,9 @@ void GraphExecBase::OnLaunchComplete(cl_event event, cl_int command_exec_status,
+   // Re-arm and recycle the launch's signals while the GraphExecBase (and thus its
+   // signal pool) is still alive, then drop the launch's reference.
+   execBase->RecycleLaunchSignals(cleanup->device, cleanup->signal_set);
++  if (cleanup->kernarg_epoch != 0) {
++    execBase->KernargLaunchCompleted(cleanup->kernarg_epoch);
++  }
+   delete cleanup;
+   execBase->release();
+ }
+@@ -3178,6 +3209,9 @@ hipError_t GraphExecSegmented::Run(hip::Stream* launch_stream) {
      graph_launch_stream->vdev()->HiddenHeapInit();
    }
  
-+  // Paired with LaunchCompleted in the completion callback. Counted before any
-+  // packet is enqueued; an error exit that skips the callback leaves the count
-+  // raised, which only stops kernarg slot reuse.
-+  if (kernArgManager_ != nullptr) {
-+    kernArgManager_->LaunchSubmitted();
-+  }
++  // Returned by the completion callback below, on every path.
++  const uint64_t kernarg_epoch =
++      (kernArgManager_ != nullptr) ? kernArgManager_->LaunchSubmitted() : 0;
    amd::Command* last_cmd = nullptr;
    if (!cross_device_launch) {
      if (max_streams_dev_.size() == 1) {
-@@ -3392,9 +3425,27 @@ address GraphKernelArgManager::AllocKernArg(size_t size, size_t alignment, int d
+@@ -3187,6 +3221,22 @@ hipError_t GraphExecSegmented::Run(hip::Stream* launch_stream) {
+       // Multi-device: pass empty vector, will use parallel_streams_ internally
+       last_cmd = EnqueueSegmentedGraph(launch_stream, {}, &status, &launch_signal_set);
+     }
++    if (status != hipSuccess) {
++      // Drain partial work; the fallback callback marker does not wait for it.
++      launch_stream->finish();
++      for (auto* stream : streams_) {
++        if (stream != nullptr) {
++          stream->finish();
++        }
++      }
++      for (auto& [dev_id, streams] : parallel_streams_) {
++        for (auto* stream : streams) {
++          if (stream != nullptr) {
++            stream->finish();
++          }
++        }
++      }
++    }
+   } else {
+     // Cross-device launch: replay segmented AQL on a capture-device stream.
+     // A marker on the graph stream preserves prior foreign launch-stream
+@@ -3255,6 +3305,7 @@ hipError_t GraphExecSegmented::Run(hip::Stream* launch_stream) {
+   cleanup->exec = this;
+   cleanup->device = g_devices[captureDeviceId_]->devices()[0];
+   cleanup->signal_set = std::move(launch_signal_set);
++  cleanup->kernarg_epoch = kernarg_epoch;
+   if (!event.setCallback(CL_COMPLETE, GraphExecBase::OnLaunchComplete, cleanup, kBlocking)) {
+     // setCallback essentially never fails, but if it does the launch's GPU work
+     // is already queued (the accumulate is enqueued and was told not to destroy
+@@ -3392,9 +3443,27 @@ address GraphKernelArgManager::AllocKernArg(size_t size, size_t alignment, int d
    if (size == 0) {
      return nullptr;
    }
@@ -138,7 +188,7 @@ index aeb45896e0..f97f444164 100644
  
    // Check if we have any pools allocated for this device
    auto& device_pools = kernarg_graph_[device];
-@@ -3410,6 +3461,7 @@ address GraphKernelArgManager::AllocKernArg(size_t size, size_t alignment, int d
+@@ -3410,6 +3479,7 @@ address GraphKernelArgManager::AllocKernArg(size_t size, size_t alignment, int d
    // Check if allocation fits in current pool
    if (new_pool_usage <= current_pool.kernarg_pool_size_) {
      current_pool.kernarg_pool_offset_ = new_pool_usage;
@@ -146,7 +196,7 @@ index aeb45896e0..f97f444164 100644
      return aligned_addr;
    }
  
-@@ -3418,8 +3470,57 @@ address GraphKernelArgManager::AllocKernArg(size_t size, size_t alignment, int d
+@@ -3418,8 +3488,62 @@ address GraphKernelArgManager::AllocKernArg(size_t size, size_t alignment, int d
      return nullptr;
    }
  
@@ -170,14 +220,10 @@ index aeb45896e0..f97f444164 100644
 +
 +void GraphKernelArgManager::CommitNodeSlots(const void* node, std::vector<KernArgSlot>&& slots) {
 +  std::lock_guard<std::mutex> lock(slot_lock_);
-+  std::vector<KernArgSlot> replaced = std::exchange(node_slots_[node], std::move(slots));
-+  // Launches still in flight may read the replaced slots; launches submitted
-+  // from now on use the new packets. Reuse them once the in-flight ones finish.
-+  if (in_flight_ == 0) {
-+    FreeSlotsLocked(replaced);
-+  } else {
-+    retired_.insert(retired_.end(), replaced.begin(), replaced.end());
++  for (const auto& slot : std::exchange(node_slots_[node], std::move(slots))) {
++    retired_.push_back({slot, last_epoch_});
 +  }
++  ReclaimRetiredLocked();
 +}
 +
 +void GraphKernelArgManager::DiscardSlots(std::vector<KernArgSlot>&& slots) {
@@ -191,34 +237,46 @@ index aeb45896e0..f97f444164 100644
 +  }
 +}
 +
-+void GraphKernelArgManager::LaunchSubmitted() {
++uint64_t GraphKernelArgManager::LaunchSubmitted() {
 +  std::lock_guard<std::mutex> lock(slot_lock_);
-+  ++in_flight_;
++  in_flight_.insert(++last_epoch_);
++  return last_epoch_;
 +}
 +
-+void GraphKernelArgManager::LaunchCompleted() {
++void GraphKernelArgManager::LaunchCompleted(uint64_t epoch) {
 +  std::lock_guard<std::mutex> lock(slot_lock_);
-+  assert(in_flight_ > 0 && "graph launch completed more times than it was submitted");
-+  if (in_flight_ > 0 && --in_flight_ == 0) {
-+    FreeSlotsLocked(retired_);
-+    retired_.clear();
++  [[maybe_unused]] const size_t erased = in_flight_.erase(epoch);
++  assert(erased == 1 && "graph launch completed more times than it was submitted");
++  ReclaimRetiredLocked();
++}
++
++void GraphKernelArgManager::ReclaimRetiredLocked() {
++  // A slot retired at epoch E is free once no launch <= E is in flight.
++  const uint64_t oldest_in_flight =
++      in_flight_.empty() ? std::numeric_limits<uint64_t>::max() : *in_flight_.begin();
++  while (!retired_.empty() && retired_.front().epoch < oldest_in_flight) {
++    FreeSlotsLocked({retired_.front().slot});
++    retired_.pop_front();
 +  }
  }
  
  void GraphKernelArgManager::ReadBackOrFlush() {
 diff --git a/projects/clr/hipamd/src/hip_graph_internal.hpp b/projects/clr/hipamd/src/hip_graph_internal.hpp
-index 08045eeccf..da29e0ec8c 100644
+index 08045eeccf..6d46480d00 100644
 --- a/projects/clr/hipamd/src/hip_graph_internal.hpp
 +++ b/projects/clr/hipamd/src/hip_graph_internal.hpp
-@@ -10,6 +10,7 @@
+@@ -10,6 +10,10 @@
  #include <queue>
  #include <stack>
  #include <iostream>
 +#include <map>
++#include <set>
++#include <limits>
++#include <deque>
  #include <unordered_map>
  #include <unordered_set>
  #include <shared_mutex>
-@@ -156,13 +157,38 @@ class GraphKernelArgManager : public amd::ReferenceCountedObject,
+@@ -156,13 +160,37 @@ class GraphKernelArgManager : public amd::ReferenceCountedObject,
    //! Allocate kernel arg pool on device for the given size.
    bool AllocGraphKernargPool(size_t pool_size, amd::Device* device);
  
@@ -251,20 +309,20 @@ index 08045eeccf..da29e0ec8c 100644
 +  //! Slots no submitted packet references go straight back for reuse.
 +  void DiscardSlots(std::vector<KernArgSlot>&& slots);
 +
-+  //! Bracket every launch of a graph using this manager. A launch whose
-+  //! completion is never reported only disables reuse, never enables it early.
-+  void LaunchSubmitted();
-+  void LaunchCompleted();
++  //! Bracket every launch; LaunchCompleted takes the epoch LaunchSubmitted returned.
++  uint64_t LaunchSubmitted();
++  void LaunchCompleted(uint64_t epoch);
 +
   private:
    struct KernelArgPoolGraph {
      KernelArgPoolGraph(address base_addr, size_t size)
-@@ -171,10 +197,22 @@ class GraphKernelArgManager : public amd::ReferenceCountedObject,
+@@ -171,10 +199,28 @@ class GraphKernelArgManager : public amd::ReferenceCountedObject,
      size_t kernarg_pool_size_;    //! Size of the pool
      size_t kernarg_pool_offset_;  //! Current offset in the kernel arg alloc
    };
 +  address AllocKernArgLocked(size_t size, size_t alignment, amd::Device* device);
 +  void FreeSlotsLocked(const std::vector<KernArgSlot>& slots);
++  void ReclaimRetiredLocked();
 +
    bool device_kernarg_pool_ = false;  //! Indicate if kernel pool in device mem
    std::unordered_map<amd::Device*, std::vector<KernelArgPoolGraph>>
@@ -275,24 +333,67 @@ index 08045eeccf..da29e0ec8c 100644
 +  bool recording_ = false;
 +  std::vector<KernArgSlot> recorded_;  //! Slots handed out by the capture in progress
 +  std::unordered_map<const void*, std::vector<KernArgSlot>> node_slots_;  //! Slots each node's packets use
-+  std::vector<KernArgSlot> retired_;     //! Replaced while launches were in flight
++  struct RetiredSlot {
++    KernArgSlot slot;
++    uint64_t epoch;  //! Last launch submitted when the slot was retired
++  };
++  std::deque<RetiredSlot> retired_;  //! Ordered by epoch
 +  //! Slots safe to hand out again, ordered by (device, size) for best-fit lookup
 +  std::multimap<std::pair<amd::Device*, size_t>, address> free_slots_;
-+  uint64_t in_flight_ = 0;               //! Launches submitted but not yet completed
++  std::set<uint64_t> in_flight_;  //! Epochs of launches not yet completed
++  uint64_t last_epoch_ = 0;
  };
  
  //! Per-GraphExecBase pool of HW event sets.
-@@ -1158,6 +1196,10 @@ class GraphExecSegmented : public GraphExecBase {
-     if (signalManager_ != nullptr && !signal_set.empty()) {
+@@ -1087,6 +1133,7 @@ class GraphExecBase : public amd::ReferenceCountedObject, public Graph {
+   }
+   //! Recycle HW event signals borrowed for a launch. No-op on classic path.
+   virtual void RecycleLaunchSignals(amd::Device* device, std::vector<void*>& signal_set) {}
++  virtual void KernargLaunchCompleted(uint64_t epoch) {}
+ 
+  protected:
+   uint64_t flags_ = 0;
+@@ -1159,6 +1206,11 @@ class GraphExecSegmented : public GraphExecBase {
        signalManager_->ReleaseSet(device, signal_set);
      }
-+    // The launch's GPU work is done, so it no longer reads any kernarg slot.
-+    if (kernArgManager_ != nullptr) {
-+      kernArgManager_->LaunchCompleted();
-+    }
    }
++  void KernargLaunchCompleted(uint64_t epoch) override {
++    if (kernArgManager_ != nullptr) {
++      kernArgManager_->LaunchCompleted(epoch);
++    }
++  }
    // Kernel arg manager is for the entire graph.
    // Child graph also shares the same kernel arg manager object. some apps have 100's of
+   // child graph nodes and each child graph has only one node.
+diff --git a/projects/hip-tests/catch/config/configs/unit/graph.yaml b/projects/hip-tests/catch/config/configs/unit/graph.yaml
+index 7af740b584..356a8ee956 100644
+--- a/projects/hip-tests/catch/config/configs/unit/graph.yaml
++++ b/projects/hip-tests/catch/config/configs/unit/graph.yaml
+@@ -494,6 +494,24 @@ graph:
+   Unit_hipGraphExecUpdate_Negative_CountDiffer:
+     <<: *level_2
+     tags: [exec]
++  Unit_hipGraphExecUpdate_KernargPoolExhaustion:
++    <<: *level_default
++    tags: [exec]
++  Unit_hipGraphExecUpdate_ExhaustionErrorPropagation:
++    <<: *level_default
++    tags: [exec]
++  Unit_hipGraphExecUpdate_KernargReuse_MemoryStable:
++    <<: *level_default
++    tags: [exec]
++  Unit_hipGraphExecUpdate_KernargReuse_InflightLaunchesKeepArgs:
++    <<: *level_default
++    tags: [exec]
++  Unit_hipGraphExecUpdate_KernargReuse_SlidingWindow:
++    <<: *level_default
++    tags: [exec]
++  Unit_hipGraphInstantiate_KernelWithoutKernargs:
++    <<: *level_default
++    tags: [exec]
+   Unit_hipGraphExecUpdate_Functional:
+     <<: *level_2
+     tags: [exec]
 diff --git a/projects/hip-tests/catch/unit/graph/CMakeLists.txt b/projects/hip-tests/catch/unit/graph/CMakeLists.txt
 index 4234104d56..0a0badbdf1 100644
 --- a/projects/hip-tests/catch/unit/graph/CMakeLists.txt
@@ -307,10 +408,10 @@ index 4234104d56..0a0badbdf1 100644
    hipGraphAddEventRecordNode.cc
 diff --git a/projects/hip-tests/catch/unit/graph/hipGraphExecUpdate_kernarg_reuse_test.cc b/projects/hip-tests/catch/unit/graph/hipGraphExecUpdate_kernarg_reuse_test.cc
 new file mode 100644
-index 0000000000..b44f9c8656
+index 0000000000..233e0e903e
 --- /dev/null
 +++ b/projects/hip-tests/catch/unit/graph/hipGraphExecUpdate_kernarg_reuse_test.cc
-@@ -0,0 +1,179 @@
+@@ -0,0 +1,233 @@
 +/*
 + * Copyright (c) Advanced Micro Devices, Inc., or its affiliates.
 + *
@@ -452,6 +553,60 @@ index 0000000000..b44f9c8656
 +      }
 +    }
 +  }
++  HIP_CHECK(hipFree(d_out));
++}
++
++/**
++ * Test Description
++ * ------------------------
++ *  - Keeps a sliding window of launches in flight, so the exec never becomes
++ *    idle. Replaced slots must still be reused once the launches that could
++ *    read them finish, and every launch must store its own value.
++ * Test source
++ * ------------------------
++ *  - unit/graph/hipGraphExecUpdate_kernarg_reuse_test.cc
++ * Test requirements
++ * ------------------------
++ *  - HIP_VERSION >= 6.0
++ */
++HIP_TEST_CASE(Unit_hipGraphExecUpdate_KernargReuse_SlidingWindow) {
++  constexpr int kWindow = 2;  // launches kept in flight; the exec never drains
++  constexpr int kWarmup = 200;
++  constexpr int kRounds = 5000;
++  constexpr long long kSpin = 2000000;  // keeps the other launch running at every update
++  int* d_out{nullptr};
++  HIP_CHECK(hipMalloc(&d_out, kWindow * sizeof(int)));
++  // Non-blocking: the null-stream readbacks must not drain it.
++  hipStream_t stream{};
++  HIP_CHECK(hipStreamCreateWithFlags(&stream, hipStreamNonBlocking));
++  hipEvent_t done[kWindow];
++  for (auto& event : done) {
++    HIP_CHECK(hipEventCreateWithFlags(&event, hipEventDisableTiming));
++  }
++  {
++    SingleKernelGraph g(d_out);
++    size_t free_after_warmup = 0;
++    for (int round = 0; round < kRounds; ++round) {
++      const int slot = round % kWindow;
++      if (round >= kWindow) {
++        HIP_CHECK(hipEventSynchronize(done[slot]));
++        int seen = -1;
++        HIP_CHECK(hipMemcpy(&seen, d_out + slot, sizeof(seen), hipMemcpyDeviceToHost));
++        INFO("round " << round - kWindow);
++        REQUIRE(seen == round - kWindow + 1);
++      }
++      if (round == kWarmup) free_after_warmup = FreeDeviceMemory();
++      g.Update(slot, round + 1, kSpin);
++      HIP_CHECK(hipGraphLaunch(g.exec, stream));
++      HIP_CHECK(hipEventRecord(done[slot], stream));
++    }
++    HIP_CHECK(hipStreamSynchronize(stream));
++    REQUIRE(FreeDeviceMemory() + (size_t{1} << 20) >= free_after_warmup);
++  }
++  for (auto& event : done) {
++    HIP_CHECK(hipEventDestroy(event));
++  }
++  HIP_CHECK(hipStreamDestroy(stream));
 +  HIP_CHECK(hipFree(d_out));
 +}
 +
