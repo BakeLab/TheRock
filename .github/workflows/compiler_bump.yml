@@ -82,8 +82,6 @@ jobs:
   # Phase 1: Create branch with bumped compiler submodules
   # ==========================================================================
   create-branch:
-    # This automation writes to origin; synchronized Gitea repositories are read-only.
-    if: ${{ github.server_url == 'https://github.com' }}
     permissions:
       contents: write # Push the compiler bump branch.
     name: Create compiler bump branch
@@ -796,7 +794,7 @@ jobs:
       - trigger-linux-tests-gfx1151
       - trigger-rccl-tests
       - trigger-windows-tests
-    if: ${{ always() && github.server_url == 'https://github.com' }}
+    if: always()
     runs-on: ubuntu-24.04
     env:
       LLVM_REF: ${{ inputs.llvm_ref || 'amd-staging' }}
