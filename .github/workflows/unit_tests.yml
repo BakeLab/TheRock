@@ -20,7 +20,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        runs-on: [ubuntu-24.04, windows-2022]
+        # The mirror has Linux runners; GitHub retains Windows coverage.
+        runs-on: ${{ fromJSON(github.server_url == 'https://github.com' && '["ubuntu-24.04", "windows-2022"]' || '["ubuntu-24.04"]') }}
     runs-on: ${{ matrix.runs-on }}
     defaults:
       run:
