@@ -14,6 +14,7 @@ _BUILD_TOOLS_DIR = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(_BUILD_TOOLS_DIR))
 
 from github_actions.github_actions_api import gha_set_output
+from github_actions.python_versions import validate_python_versions
 
 RELEASE_TYPES = [
     "ci",
@@ -27,10 +28,10 @@ RELEASE_TYPES = [
 # TODO: add opt-ins for CI runs to use python versions and pytorch refs normally
 #       only included in release runs
 
-RELEASE_PYTHON_VERSIONS = ["3.10", "3.11", "3.12", "3.13", "3.14"]
+RELEASE_PYTHON_VERSIONS = ["3.14"]
 CI_PYTHON_VERSIONS = {
-    "linux": ["3.12"],
-    "windows": ["3.12"],
+    "linux": ["3.14"],
+    "windows": ["3.14"],
 }
 
 # Refs for the "prerelease" release type. The "nightly" release type extends
@@ -132,6 +133,7 @@ def generate_pytorch_matrix_for_release_type(
     versions = python_versions or _default_python_versions(
         release_type=release_type, platform=platform
     )
+    validate_python_versions(versions)
     refs = pytorch_git_refs or _default_pytorch_git_refs(
         release_type=release_type, platform=platform
     )

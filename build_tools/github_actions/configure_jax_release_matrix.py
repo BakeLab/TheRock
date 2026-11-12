@@ -13,6 +13,7 @@ _BUILD_TOOLS_DIR = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(_BUILD_TOOLS_DIR))
 
 from github_actions.github_actions_api import gha_set_output
+from github_actions.python_versions import validate_python_versions
 
 RELEASE_TYPES = [
     "ci",
@@ -25,9 +26,9 @@ RELEASE_TYPES = [
 
 # TODO: add opt-ins for CI runs to use python versions and JAX refs normally
 #       only included in release runs.
-RELEASE_PYTHON_VERSIONS = ["3.11", "3.12", "3.13", "3.14"]
+RELEASE_PYTHON_VERSIONS = ["3.14"]
 CI_PYTHON_VERSIONS = {
-    "linux": ["3.12"],
+    "linux": ["3.14"],
 }
 
 JAX_REF_CONFIGS = {
@@ -45,15 +46,11 @@ JAX_REF_CONFIGS = {
         "jax_ref": "rocm-jaxlib-v0.11.0",
         "jax_repository": "ROCm/jax",
         "gfx_arch": "device-all",
-        # JAX dropped Python 3.11 support in 0.11.0.
-        "exclude_python_versions": ["3.11"],
     },
     "rocm-jaxlib-v0.11.1": {
         "jax_ref": "rocm-jaxlib-v0.11.1",
         "jax_repository": "ROCm/jax",
         "gfx_arch": "device-all",
-        # JAX dropped Python 3.11 support in 0.11.0.
-        "exclude_python_versions": ["3.11"],
     },
 }
 
@@ -107,14 +104,11 @@ def generate_jax_matrix(
     jax_refs: list[str],
     python_versions: list[str],
 ) -> list[dict[str, str]]:
+    validate_python_versions(python_versions)
     matrix: list[dict[str, str]] = []
     for py in python_versions:
         for ref in jax_refs:
             ref_cfg = JAX_REF_CONFIGS[ref]
-            # Skip Python versions a ref explicitly excludes (declared in
-            # JAX_REF_CONFIGS, e.g. JAX 0.11.0 dropped Python 3.11).
-            if py in ref_cfg.get("exclude_python_versions", ()):
-                continue
             # These row keys are the contract with workflow files which use them
             # via matrix.<key> expressions. Empty values are allowed when the
             # workflow handles them explicitly, but undefined keys are not.

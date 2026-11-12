@@ -57,6 +57,13 @@ function(therock_detect_shared_python_executables out_executables)
       if(NOT EXISTS "${_python_exe}")
         message(FATAL_ERROR "Shared Python executable not found: ${_python_exe}")
       endif()
+      execute_process(
+        COMMAND "${_python_exe}" -c "import sys; sys.exit(sys.version_info < (3, 14))"
+        RESULT_VARIABLE _version_result
+      )
+      if(NOT _version_result EQUAL 0)
+        message(FATAL_ERROR "Python 3.14+ required at ${_python_exe}")
+      endif()
       _therock_check_python_shared_library("${_python_exe}" _lib_path)
       if(NOT _lib_path)
         message(FATAL_ERROR "Python executable does not support shared libpython: ${_python_exe} (from ${_sanitized_shared_python_executables})")
@@ -82,7 +89,7 @@ endfunction()
 # Note: Most projects do not need to set this; only use it for multi-version Python builds.
 # Usage scenarios:
 #   a. Defined Python3 Executables: an explicit list of python interpreters to build for
-#      Example: -DTHEROCK_DIST_PYTHON_EXECUTABLES="/opt/python-3.8/bin/python3.8;/opt/python-3.9/bin/python3.9"
+#      Example: -DTHEROCK_DIST_PYTHON_EXECUTABLES="/opt/python-3.14/bin/python3.14;/opt/python-3.15/bin/python3.15"
 #   b. Default Python3 Available: only build for the single auto detected python version (default behavior)
 #
 # For manylinux builds, this should be set to a subset of Python versions from /opt/python-*/bin
@@ -112,6 +119,10 @@ function(therock_detect_python_versions OUT_EXECUTABLES OUT_VERSIONS)
           set(_minor "${CMAKE_MATCH_2}")
           set(_version "${_major}.${_minor}")
 
+          if(_version VERSION_LESS 3.14)
+            message(FATAL_ERROR "Python 3.14+ required, found ${_version} at ${_python_exe}")
+          endif()
+
           list(APPEND _python_executables "${_python_exe}")
           list(APPEND _python_versions "${_version}")
           message(STATUS "  Verified Python ${_version} at ${_python_exe}")
@@ -124,7 +135,7 @@ function(therock_detect_python_versions OUT_EXECUTABLES OUT_VERSIONS)
     endforeach()
   else()
     # Default behavior: find and use only the system Python
-    find_package(Python3 COMPONENTS Interpreter)
+    find_package(Python3 3.14 COMPONENTS Interpreter REQUIRED)
 
     if(Python3_FOUND)
       list(APPEND _python_executables "${Python3_EXECUTABLE}")

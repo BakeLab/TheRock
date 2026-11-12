@@ -61,7 +61,7 @@ jobs:
       contents: read
       id-token: write
     container:
-      image: python:3.12-slim
+      image: python:3.14-slim
     steps:
       - name: Checking out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

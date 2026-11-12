@@ -31,7 +31,7 @@ LINUX_TEST_ENVIRONMENTS = [
         container_image_name=container_image_name,
         container_image_url=container_image_url,
     )
-    for python_version in ["3.10", "3.11", "3.12"]
+    for python_version in ["3.14"]
     for container_image_name, container_image_url in [
         ("ubuntu24.04", UBUNTU_24_04_CONTAINER),
         ("ubi10", UBI_10_CONTAINER),
@@ -40,7 +40,7 @@ LINUX_TEST_ENVIRONMENTS = [
 
 WINDOWS_TEST_ENVIRONMENTS = [
     PythonTestEnvironment(
-        python_version="3.12",
+        python_version="3.14",
         container_image_name="native",
         container_image_url="",
     )

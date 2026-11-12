@@ -30,10 +30,10 @@ class ConfigureRocmPythonTestMatrixTest(unittest.TestCase):
             platform="linux",
         )
 
-        self.assertEqual(len(matrix), 6)
+        self.assertEqual(len(matrix), 2)
         python_versions = {row["python_version"] for row in matrix}
         container_image_names = {row["container_image_name"] for row in matrix}
-        self.assertEqual(python_versions, {"3.10", "3.11", "3.12"})
+        self.assertEqual(python_versions, {"3.14"})
         self.assertEqual(container_image_names, {"ubuntu24.04", "ubi10"})
         self.assertEqual({row["amdgpu_family"] for row in matrix}, {"gfxMOCKLINUX"})
         self.assertEqual({row["test_runs_on"] for row in matrix}, {"mock-linux-runner"})
@@ -55,7 +55,7 @@ class ConfigureRocmPythonTestMatrixTest(unittest.TestCase):
                 {
                     "amdgpu_family": "gfxMOCKWINDOWS",
                     "test_runs_on": "mock-windows-runner",
-                    "python_version": "3.12",
+                    "python_version": "3.14",
                     "container_image_name": "native",
                     "container_image_url": "",
                 }
@@ -96,7 +96,7 @@ class ConfigureRocmPythonTestMatrixTest(unittest.TestCase):
                 platform="linux",
             )
 
-        self.assertEqual(len(matrix), 6)
+        self.assertEqual(len(matrix), 2)
         self.assertEqual(select_weighted_label.call_count, len(matrix))
         self.assertEqual(
             {row["test_runs_on"] for row in matrix}, {"mock-weighted-runner"}

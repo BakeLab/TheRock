@@ -35,6 +35,7 @@ packages = find_packages(where="./src")
 print("Found packages:", packages)
 
 setup(
+    python_requires=">=3.14",
     name=f"rocm-sdk-devel",
     version=dist_info.__version__,
     packages=packages,

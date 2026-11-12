@@ -94,7 +94,7 @@ jobs:
     name: Build Tarballs
     runs-on: ${{ github.repository_owner == 'ROCm' && 'aws-linux-scale-rocm-prod' || 'ubuntu-24.04' }}
     container:
-      image: python:3.12-slim
+      image: python:3.14-slim
     permissions:
       id-token: write
     outputs:

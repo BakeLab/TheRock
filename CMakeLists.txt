@@ -36,7 +36,7 @@ include(therock_testing)
 # Python is used throughout the build. Ensure it is initialized early.
 ################################################################################
 
-find_package(Python3 3.9 COMPONENTS Interpreter REQUIRED)
+find_package(Python3 3.14 COMPONENTS Interpreter REQUIRED)
 
 ################################################################################
 # Generate build topology targets

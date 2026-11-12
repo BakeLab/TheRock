@@ -28,7 +28,7 @@ on:
       python_version:
         required: true
         type: string
-        default: "3.12"
+        default: "3.14"
       torch_version:
         description: torch package version to install. (e.g. "2.7.1+rocm7.10.0a20251120")
         required: true

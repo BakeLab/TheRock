@@ -51,6 +51,7 @@ if platform_dir.is_dir():
             package_data_files.append(str(path.relative_to(platform_dir)))
 
 setup(
+    python_requires=">=3.14",
     name=my_package.get_dist_package_name(target_family=dist_info.THIS_TARGET_FAMILY),
     version=dist_info.__version__,
     packages=packages,

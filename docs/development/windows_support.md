@@ -241,7 +241,7 @@ If you prefer to install tools manually, you will need:
   Meson uses when building Mesa's gallium/D3D12 driver. Not needed if
   `THEROCK_ENABLE_SYSDEPS_AMD_MESA` is `OFF`.
 
-- Python: https://www.python.org/downloads/ (3.11+ recommended)
+- Python: https://www.python.org/downloads/ (3.14+ required)
 
 > [!WARNING]
 > Prefer to install Python for the current user only and to a path

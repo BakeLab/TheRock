@@ -420,12 +420,10 @@ if ($pythonCmd) {
     $pyVerStr = ((& python --version 2>&1) -replace "Python ", "").Trim()
     try {
         $pyVer = [Version]$pyVerStr
-        if ($pyVer -ge [Version]"3.11") {
-            Write-Pass "Python $pyVerStr (>= 3.11)"
-        } elseif ($pyVer -ge [Version]"3.8") {
-            Write-Warn "Python $pyVerStr (3.11+ recommended)"
+        if ($pyVer -ge [Version]"3.14") {
+            Write-Pass "Python $pyVerStr (>= 3.14)"
         } else {
-            Write-Fail "Python $pyVerStr (3.11+ recommended)"
+            Write-Fail "Python $pyVerStr (3.14+ required)"
         }
     } catch {
         Write-Pass "Python found: $pyVerStr"
@@ -441,7 +439,7 @@ if ($pythonCmd) {
     }
 } else {
     Write-Fail "Python not found in PATH" `
-        -Detail "Install Python 3.11+ from https://www.python.org/downloads/ (avoid paths with spaces)"
+        -Detail "Install Python 3.14+ from https://www.python.org/downloads/ (avoid paths with spaces)"
 }
 
 # Virtual environment

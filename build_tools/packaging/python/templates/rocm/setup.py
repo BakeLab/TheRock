@@ -82,6 +82,7 @@ packages = find_packages(where="./src")
 print("Found packages:", packages)
 
 setup(
+    python_requires=">=3.14",
     name="rocm",
     version=dist_info.__version__,
     package_dir={"": "src"},
