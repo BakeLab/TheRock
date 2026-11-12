@@ -17,17 +17,9 @@ INSTALL_ROOT="/opt/python-shared"
 
 # Python versions to build (major.minor.patch)
 PYTHON_VERSIONS=(
-  "3.10.16"
-  "3.11.11"
-  "3.12.9"
-  "3.13.2"
   "3.14.0"
 )
 declare -Ar PYTHON_SHA256S=(
-  ["3.10.16"]="f2e22ed965a93cfeb642378ed6e6cdbc127682664b24123679f3d013fafe9cd0"
-  ["3.11.11"]="883bddee3c92fcb91cf9c09c5343196953cbb9ced826213545849693970868ed"
-  ["3.12.9"]="45313e4c5f0e8acdec9580161d565cf5fea578e3eabf25df7cc6355bf4afa1ee"
-  ["3.13.2"]="b8d79530e3b7c96a5cb2d40d431ddb512af4a563e863728d8713039aa50203f9"
   ["3.14.0"]="88d2da4eed42fa9a5f42ff58a8bc8988881bd6c547e297e46682c2687638a851"
 )
 

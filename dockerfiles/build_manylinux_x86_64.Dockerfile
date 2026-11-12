@@ -15,7 +15,7 @@ FROM quay.io/pypa/manylinux_2_28_x86_64@sha256:d632b5e68ab39e59e128dcf0e59e438b2
 # These images come with multiple python versions. We pin one for
 # default use.
 # Prepend therock-tools to PATH
-ENV PATH="/usr/local/therock-tools/bin:/opt/python/cp312-cp312/bin:${PATH}"
+ENV PATH="/usr/local/therock-tools/bin:/opt/python/cp314-cp314/bin:${PATH}"
 
 ######## Pip Packages ########
 RUN pip install --upgrade pip setuptools==69.1.1 wheel==0.46.2 && \

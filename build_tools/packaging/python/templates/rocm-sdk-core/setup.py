@@ -49,6 +49,7 @@ if (
     WINDOWS_CONSOLE_SCRIPTS.append("rocminfo=rocm_sdk_core._cli:rocm_info")
 
 setup(
+    python_requires=">=3.14",
     name=f"rocm-sdk-core",
     version=dist_info.__version__,
     packages=packages,

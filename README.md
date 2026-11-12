@@ -2,6 +2,8 @@
 
 [![pre-commit](https://img.shields.io/badge/pre--commit-enabled-brightgreen?logo=pre-commit)](https://github.com/pre-commit/pre-commit) [![Multi-arch CI](https://github.com/ROCm/TheRock/actions/workflows/multi_arch_ci.yml/badge.svg?branch=main&event=push)](https://github.com/ROCm/TheRock/actions/workflows/multi_arch_ci.yml?query=branch%3Amain) [![Multi-arch CI ASan](https://github.com/ROCm/TheRock/actions/workflows/multi_arch_ci_asan.yml/badge.svg?branch=main)](https://github.com/ROCm/TheRock/actions/workflows/multi_arch_ci_asan.yml?query=branch%3Amain)
 
+TheRock requires CPython 3.14 or newer for building, automation, and Python packages.
+
 TheRock (The HIP Environment and ROCm Kit) is the open source build and release system for HIP and ROCm, and the top-level entry point that integrates ROCm's components into a single buildable, testable, and releasable product. Since ROCm 7.14, ROCm is built and released through TheRock, which replaces the previous monolithic release process with a modular workflow that makes ROCm components easier to build, integrate, and distribute. It is designed for ROCm contributors as well as developers, researchers, and advanced users who need access to the latest ROCm capabilities without the complexity of traditional package-based installations. The project is under active development and welcomes contributors. Come try us out! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for more info and the [FAQ](docs/faq.md) for frequently asked questions.
 
 For general information about the ROCm software platform, see the [ROCm documentation](https://rocm.docs.amd.com/).

@@ -164,7 +164,7 @@ class TestCIInputsFromEnviron(unittest.TestCase):
                 "BASELINE_RUN_ID": "12345",
                 "BUILD_PYTORCH": "false",
                 "BUILD_JAX": "true",
-                "PYTHON_VERSION": "3.12",
+                "PYTHON_VERSION": "3.14",
             },
         )
         self.assertEqual(inputs.linux_amdgpu_families, ["gfx94x", "gfx120x"])
@@ -173,7 +173,7 @@ class TestCIInputsFromEnviron(unittest.TestCase):
         self.assertEqual(inputs.baseline_run_id, "12345")
         self.assertFalse(inputs.build_pytorch)
         self.assertTrue(inputs.build_jax)
-        self.assertEqual(inputs.python_versions, ["3.12"])
+        self.assertEqual(inputs.python_versions, ["3.14"])
 
     def test_pull_request_extracts_labels(self):
         """PR labels are extracted from event.pull_request.labels."""
@@ -1281,10 +1281,10 @@ class TestExpandBuildConfigs(unittest.TestCase):
             jobs=_jobs(),
         )
 
-        self.assertEqual(len(result.linux.test_python_packages_matrix), 6)
+        self.assertEqual(len(result.linux.test_python_packages_matrix), 2)
         self.assertEqual(
             {row["python_version"] for row in result.linux.test_python_packages_matrix},
-            {"3.10", "3.11", "3.12"},
+            {"3.14"},
         )
         self.assertEqual(
             {
@@ -1300,7 +1300,7 @@ class TestExpandBuildConfigs(unittest.TestCase):
                 {
                     "amdgpu_family": "gfx110X-all",
                     "test_runs_on": "windows-gfx110X-gpu-rocm",
-                    "python_version": "3.12",
+                    "python_version": "3.14",
                     "container_image_name": "native",
                     "container_image_url": "",
                 }
@@ -1338,13 +1338,13 @@ class TestExpandBuildConfigs(unittest.TestCase):
             result.linux.pytorch_build_matrix,
             [
                 {
-                    "python_version": "3.12",
+                    "python_version": "3.14",
                     "pytorch_git_ref": "release/2.12",
                     "amdgpu_families": "gfx94X-dcgpu",
                     "test_amdgpu_families": "auto",
                 },
                 {
-                    "python_version": "3.12",
+                    "python_version": "3.14",
                     "pytorch_git_ref": "release/2.13",
                     "amdgpu_families": "gfx94X-dcgpu",
                     "test_amdgpu_families": "auto",
@@ -1355,7 +1355,7 @@ class TestExpandBuildConfigs(unittest.TestCase):
             result.windows.pytorch_build_matrix,
             [
                 {
-                    "python_version": "3.12",
+                    "python_version": "3.14",
                     "pytorch_git_ref": "release/2.12",
                     "amdgpu_families": "gfx110X-all",
                     "test_amdgpu_families": "auto",
@@ -1371,7 +1371,7 @@ class TestExpandBuildConfigs(unittest.TestCase):
         result = cm.expand_build_configs(
             ci_inputs=self._inputs(
                 release_type="dev",
-                python_versions=["3.13"],
+                python_versions=["3.15"],
             ),
             git_context=cm.GitContext(),
             targets=targets,
@@ -1380,7 +1380,7 @@ class TestExpandBuildConfigs(unittest.TestCase):
 
         self.assertEqual(
             {row["python_version"] for row in result.linux.pytorch_build_matrix},
-            {"3.13"},
+            {"3.15"},
         )
 
     def test_build_config_disables_pytorch_when_job_skipped(self):
@@ -1426,7 +1426,7 @@ class TestExpandBuildConfigs(unittest.TestCase):
             windows_families=["gfx110x"],
         )
         result = cm.expand_build_configs(
-            ci_inputs=self._inputs(python_versions=["3.12"]),
+            ci_inputs=self._inputs(python_versions=["3.14"]),
             git_context=cm.GitContext(),
             targets=targets,
             jobs=_jobs(build_jax=True),
@@ -1436,7 +1436,7 @@ class TestExpandBuildConfigs(unittest.TestCase):
         self.assertGreater(len(result.linux.jax_build_matrix), 0)
         self.assertEqual(
             {row["python_version"] for row in result.linux.jax_build_matrix},
-            {"3.12"},
+            {"3.14"},
         )
         self.assertFalse(result.windows.build_jax)
         self.assertEqual(result.windows.jax_build_matrix, [])

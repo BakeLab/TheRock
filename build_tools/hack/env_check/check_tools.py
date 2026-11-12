@@ -118,16 +118,16 @@ class CheckPython(CheckProgram):
             _except = cstring(
                 f"""
     Found Python is Python 2.
-    TheRock not support Python 2. Please Switch to Python 3.9+ versions.
+    TheRock not support Python 2. Please Switch to Python 3.14+ versions.
 
         traceback: Unsupported Python versions
-            > expected version: 3.9.X ≤ python ≤ 3.13.X, found {python.version}
+            > expected version: python ≥ 3.14, found {python.version}
     """,
                 "err",
             )
             _result = None
 
-        elif python.MINOR_VERSION <= 8:
+        elif python.MINOR_VERSION < 14:
             _stat = msg_stat(
                 "err",
                 name,
@@ -136,10 +136,10 @@ class CheckPython(CheckProgram):
             _except = cstring(
                 f"""
     Found Python version: {python.version}
-    TheRock not support Python 3.8 and older versions. Please Switch to Python 3.9+ versions.
+    TheRock not support Python 3.13 and older versions. Please Switch to Python 3.14+ versions.
 
         traceback: Unsupported Python versions
-            > expected version: 3.9.X ≤ python ≤ 3.13.X, found {python.version}
+            > expected version: python ≥ 3.14, found {python.version}
     """,
                 "err",
             )
@@ -174,24 +174,6 @@ class CheckPython(CheckProgram):
                 "err",
             )
             _result = None
-
-        elif python.MINOR_VERSION >= 14:
-            _stat = msg_stat(
-                "warn",
-                name,
-                f"Found Python {python.version} at {python.exe} {python.ENV_TYPE}.",
-            )
-            _except = cstring(
-                f"""
-    Found Python version: {python.version}
-    Warning: These newer Python versions are not yet tested.
-
-        traceback: Python 3 version too new may unstable
-            > expected version: 3.9.X ≤ python ≤ 3.13.X, found {python.version}
-    """,
-                "warn",
-            )
-            _result = False
 
         elif python.ENV_TYPE == "Global ENV" and not self.is_global_env_ok:
             _stat = msg_stat(

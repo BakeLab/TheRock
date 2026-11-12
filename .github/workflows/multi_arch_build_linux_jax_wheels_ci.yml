@@ -22,7 +22,7 @@ on:
         required: true
       python_version:
         type: string
-        default: "3.12"
+        default: "3.14"
       jax_repository:
         description: "Repository containing the JAX release branch."
         type: string
@@ -84,7 +84,7 @@ on:
         required: true
       python_version:
         type: string
-        default: "3.12"
+        default: "3.14"
       jax_repository:
         description: "GitHub repository in owner/repo format containing the JAX release branch."
         type: string

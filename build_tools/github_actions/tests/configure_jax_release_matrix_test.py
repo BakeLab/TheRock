@@ -18,7 +18,7 @@ from workflow_utils import (
 
 
 class ConfigureJaxReleaseMatrixTest(unittest.TestCase):
-    def test_default_matrix_includes_multiple_python_versions_and_refs(self):
+    def test_default_matrix_uses_python314_and_multiple_refs(self):
         matrix = m.generate_jax_matrix_for_release_type(
             release_type="dev",
             platform="linux",
@@ -28,7 +28,7 @@ class ConfigureJaxReleaseMatrixTest(unittest.TestCase):
         jax_refs = {row["jax_ref"] for row in matrix}
 
         self.assertGreater(len(matrix), 1)
-        self.assertGreater(len(python_versions), 1)
+        self.assertEqual(python_versions, {"3.14"})
         self.assertGreater(len(jax_refs), 1)
         self.assertEqual(
             set(matrix[0]),
@@ -39,23 +39,23 @@ class ConfigureJaxReleaseMatrixTest(unittest.TestCase):
         matrix = m.generate_jax_matrix_for_release_type(
             release_type="dev",
             platform="linux",
-            python_versions=["3.12"],
+            python_versions=["3.14"],
         )
 
         self.assertGreater(len(matrix), 1)
         self.assertEqual(
             {row["python_version"] for row in matrix},
-            {"3.12"},
+            {"3.14"},
         )
 
     def test_generate_jax_matrix_uses_requested_refs_only(self):
         matrix = m.generate_jax_matrix(
             jax_refs=["rocm-jaxlib-v0.10.1"],
-            python_versions=["3.12"],
+            python_versions=["3.14"],
         )
 
         self.assertEqual(len(matrix), 1)
-        self.assertEqual(matrix[0]["python_version"], "3.12")
+        self.assertEqual(matrix[0]["python_version"], "3.14")
         self.assertEqual(matrix[0]["jax_ref"], "rocm-jaxlib-v0.10.1")
         self.assertEqual(matrix[0]["jax_label"], "0.10.1")
         self.assertEqual(matrix[0]["jax_repository"], "ROCm/jax")
@@ -86,7 +86,7 @@ class ConfigureJaxReleaseMatrixTest(unittest.TestCase):
         matrix = m.generate_jax_matrix_for_release_type(
             release_type="dev",
             platform="linux",
-            python_versions=["3.12"],
+            python_versions=["3.14"],
         )
 
         self.assertGreater(len(matrix), 0)
@@ -97,22 +97,14 @@ class ConfigureJaxReleaseMatrixTest(unittest.TestCase):
             # this test fails until the generator emits that key for every row.
             self.assertEqual(matrix_references - set(row), set())
 
-    def test_ref_excluded_python_versions_are_filtered(self):
-        # exclude_python_versions in JAX_REF_CONFIGS drops those Python versions
-        # for that ref only (e.g. JAX 0.11.0 excludes 3.11).
-        matrix = m.generate_jax_matrix_for_release_type(
-            release_type="dev",
-            platform="linux",
-        )
-        combos = {(row["python_version"], row["jax_ref"]) for row in matrix}
-
-        self.assertNotIn(("3.11", "rocm-jaxlib-v0.11.0"), combos)
-        self.assertNotIn(("3.11", "rocm-jaxlib-v0.11.1"), combos)
-        # 3.11 is still valid for refs that don't exclude it.
-        self.assertIn(("3.11", "rocm-jaxlib-v0.10.2"), combos)
-        # Non-excluded Python versions are still paired with the 0.11 refs.
-        self.assertIn(("3.12", "rocm-jaxlib-v0.11.0"), combos)
-        self.assertIn(("3.12", "rocm-jaxlib-v0.11.1"), combos)
+    def test_rejects_unsupported_python_versions(self):
+        for version in ("3.9", "3.13", "2.7", "invalid"):
+            with self.subTest(version=version), self.assertRaisesRegex(
+                ValueError, "Python 3.14\\+ required"
+            ):
+                m.generate_jax_matrix_for_release_type(
+                    release_type="dev", platform="linux", python_versions=[version]
+                )
 
     def test_ci_builds_single_jax_ref(self):
         # CI keeps the runner queues short by building one ref, while still

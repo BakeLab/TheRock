@@ -117,7 +117,7 @@ on:
       python_version:
         description: Python version to build wheels for (for example, "3.12").
         type: string
-        default: "3.12"
+        default: "3.14"
       pytorch_git_ref:
         description: PyTorch ref to checkout (for example, "release/2.13").
         type: string
