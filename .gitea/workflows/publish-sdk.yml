@@ -1,0 +1,118 @@
+name: publish-sdk
+
+on:
+  push:
+    branches: [trim]
+  workflow_dispatch:
+
+concurrency:
+  group: rocm-sdk-gfx1201-znver4
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  sdk:
+    runs-on: [self-hosted, linux, x64, cpu, on-demand, rocm-sdk-build-only]
+    timeout-minutes: 1440
+    permissions:
+      contents: read
+      id-token: write
+    outputs:
+      version: ${{ steps.release.outputs.version }}
+      date: ${{ steps.release.outputs.date }}
+      pipeline_ref: ${{ steps.release.outputs.pipeline_ref }}
+    steps:
+      - uses: builtin:checkout
+        with:
+          repository: BakeLab/breadkernel
+          ref: main
+          token: ${{ gitea.token }}
+      - uses: builtin:checkout
+        with:
+          path: therock
+      - name: Check the dedicated CPU builder
+        run: |
+          set -euo pipefail
+          command -v pacman >/dev/null
+          python3 -c 'import sys; assert sys.version_info >= (3, 14), "Python 3.14+ required"'
+          cpu=$(python3 accelerator-wheel-pipeline.py detect --cpu-architecture)
+          case "$cpu" in znver4|znver5) ;; *) echo 'The znver4 SDK requires a compatible CPU builder' >&2; exit 1 ;; esac
+          test -z "${LD_LIBRARY_PATH:-}" || { echo 'Use the CPU-only profile without accelerator runtime libraries' >&2; exit 1; }
+          test "$(df -Pk "$GITHUB_WORKSPACE" | awk 'NR==2 {print $4}')" -ge 209715200 || { echo 'At least 200 GiB free space is required' >&2; exit 1; }
+          test "$(awk '/MemTotal:/ {print $2}' /proc/meminfo)" -ge 62914560 || { echo 'The SDK builder needs the 64 GiB memory profile' >&2; exit 1; }
+      - name: Install build tools in the CPU guest
+        run: |
+          set -euo pipefail
+          root_cmd=()
+          if [ "$(id -u)" -ne 0 ]; then root_cmd=(sudo); fi
+          "${root_cmd[@]}" pacman -Syu --needed --noconfirm base-devel clang cmake ninja \
+            python python-pip python-joblib python-msgpack pkgconf flex bison gcc-fortran \
+            patchelf numactl libdrm libelf libglvnd texinfo git curl rsync zstd
+      - uses: astral-sh/setup-uv@v10.3.0
+        with:
+          enable-cache: false
+      - name: Resolve the frozen SDK release
+        id: release
+        env:
+          SOURCE_SHA: ${{ gitea.sha }}
+        run: |
+          set -euo pipefail
+          test "$(git -C therock rev-parse HEAD)" = "$SOURCE_SHA"
+          version="10.1.0.dev$(date -u +%Y%m%d)+rocm.10.1.gfx1201.znver4.g${SOURCE_SHA:0:8}.r${GITHUB_RUN_NUMBER}a${GITHUB_RUN_ATTEMPT}"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "date=$(date -u +%Y.%-m.%-d)" >> "$GITHUB_OUTPUT"
+          echo "pipeline_ref=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+      - name: Build the fixed SDK from this commit
+        env:
+          THEROCK_SOURCE_DIR: ${{ github.workspace }}/therock
+          THEROCK_REF: ${{ gitea.sha }}
+          THEROCK_GPU_TARGET: gfx1201
+          THEROCK_CPU_TARGET: znver4
+          THEROCK_LINK_JOBS: "2"
+        run: |
+          set -euo pipefail
+          jobs=$(nproc)
+          if [ "$jobs" -gt 32 ]; then jobs=32; fi
+          export THEROCK_BUILD_JOBS="$jobs"
+          bash build-therock.sh build
+      - name: Package and publish the SDK
+        env:
+          SOURCE_SHA: ${{ gitea.sha }}
+          SDK_VERSION: ${{ steps.release.outputs.version }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+          path = Path('.therock-build/gfx1201/znver4/build/artifacts/base_lib_generic/base/aux-overlay/stage/share/therock/therock_manifest.json')
+          if json.loads(path.read_text())['the_rock_commit'] != os.environ['SOURCE_SHA']:
+              raise SystemExit('SDK artifacts do not match the triggering TheRock commit')
+          PY
+          python3 therock-wheel-pipeline.py build --cpu-architecture znver4 \
+            --therock-source "$GITHUB_WORKSPACE/therock" \
+            --python "$GITHUB_WORKSPACE/therock/.venv/bin/python" --version "$SDK_VERSION"
+          python3 therock-wheel-pipeline.py publish --cpu-architecture znver4 --version "$SDK_VERSION"
+
+  runtime-pack:
+    needs: sdk
+    runs-on: [self-hosted, linux, x64, cpu, on-demand]
+    timeout-minutes: 180
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: builtin:checkout
+        with:
+          repository: BakeLab/breadkernel
+          ref: ${{ needs.sdk.outputs.pipeline_ref }}
+          token: ${{ gitea.token }}
+      - uses: ./.gitea/actions/publish-accelerator
+        with:
+          accelerator: rocm
+          cpu-architecture: znver4
+          architecture: amd64
+          breadboard-ref: main
+          release-date: ${{ needs.sdk.outputs.date }}
+          rocm-version: ${{ needs.sdk.outputs.version }}
