@@ -28,7 +28,7 @@ jobs:
         with:
           repository: BakeLab/breadkernel
           ref: main
-          token: ${{ gitea.token }}
+          token: ${{ secrets.BREADKERNEL_READ_TOKEN }}
       - uses: builtin:checkout
         with:
           path: therock
@@ -107,7 +107,7 @@ jobs:
         with:
           repository: BakeLab/breadkernel
           ref: ${{ needs.sdk.outputs.pipeline_ref }}
-          token: ${{ gitea.token }}
+          token: ${{ secrets.BREADKERNEL_READ_TOKEN }}
       - uses: ./.gitea/actions/publish-accelerator
         with:
           accelerator: rocm
