@@ -14,7 +14,7 @@ permissions:
 
 jobs:
   sdk:
-    runs-on: [self-hosted, linux, x64, cpu, on-demand, rocm-sdk-build-only]
+    runs-on: [self-hosted, linux, x64, cpu, on-demand]
     timeout-minutes: 1440
     permissions:
       contents: read
@@ -32,7 +32,7 @@ jobs:
       - uses: builtin:checkout
         with:
           path: therock
-      - name: Check the dedicated CPU builder
+      - name: Check CPU build resources
         run: |
           set -euo pipefail
           command -v pacman >/dev/null
