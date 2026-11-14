@@ -7,6 +7,12 @@ set -e
 PREFIX="${1:?Expected install prefix argument}"
 PATCHELF="${PATCHELF:-patchelf}"
 
+# Host tools must resolve their own system debuginfod ABI, not our private one.
+if compgen -G "$PREFIX/lib/libdebuginfod.so*" >/dev/null; then
+    echo "Unexpected bundled libdebuginfod; configure with --disable-libdebuginfod" >&2
+    exit 1
+fi
+
 # update_library_links
 # ---------------------
 # Purpose:
