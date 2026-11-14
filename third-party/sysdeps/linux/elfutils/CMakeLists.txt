@@ -106,6 +106,7 @@ add_custom_target(
       --prefix "${CMAKE_INSTALL_PREFIX}"
       --libdir "${CMAKE_INSTALL_PREFIX}/lib"
       --disable-debuginfod
+      --disable-libdebuginfod
       --enable-install-elfh
       --with-bzlib --with-zlib --with-zstd
       --with-lzma
