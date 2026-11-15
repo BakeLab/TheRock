@@ -36,12 +36,16 @@ COMMON_CONSOLE_SCRIPT_TESTS = [
     ("amdclang++", ["--help"], "clang LLVM compiler", True),
     ("amdclang-cpp", ["--help"], "clang LLVM compiler", True),
     ("amdclang-cl", ["-help"], "clang LLVM compiler", True),
-    ("amdflang", ["--help"], "LLVM compiler", True),
     ("amdlld", ["-flavor", "ld.lld", "--help"], "USAGE:", True),
     ("hipcc", ["--help"], "clang LLVM compiler", True),
     ("hipconfig", [], "HIP version:", True),
     ("hipify-clang", ["--help"], "USAGE:", True),
 ]
+
+if (Path(core_mod.__file__).resolve().parent / "lib/llvm/bin/amdflang").exists():
+    COMMON_CONSOLE_SCRIPT_TESTS.append(
+        ("amdflang", ["--help"], "LLVM compiler", True)
+    )
 
 LINUX_CONSOLE_SCRIPT_TESTS = [
     ("amd-smi", [], "AMD-SMI", True),

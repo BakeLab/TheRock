@@ -40,6 +40,12 @@ print("Found packages:", packages)
 WINDOWS_CONSOLE_SCRIPTS = [
     "hipInfo=rocm_sdk_core._cli:hipInfo",
 ]
+FLANG_CONSOLE_SCRIPTS = []
+flang_executable = (
+    THIS_DIR / "platform" / platform_package_name / "lib" / "llvm" / "bin" / "amdflang"
+)
+if flang_executable.exists():
+    FLANG_CONSOLE_SCRIPTS.append("amdflang=rocm_sdk_core._cli:amdflang")
 if (
     platform.system() == "Windows"
     and (
@@ -72,7 +78,6 @@ setup(
             "amdclang++=rocm_sdk_core._cli:amdclangpp",
             "amdclang-cpp=rocm_sdk_core._cli:amdclang_cpp",
             "amdclang-cl=rocm_sdk_core._cli:amdclang_cl",
-            "amdflang=rocm_sdk_core._cli:amdflang",
             "amdlld=rocm_sdk_core._cli:amdlld",
             "hipcc=rocm_sdk_core._cli:hipcc",
             "hipconfig=rocm_sdk_core._cli:hipconfig",
@@ -82,6 +87,7 @@ setup(
             "roc-obj-extract=rocm_sdk_core._cli:roc_obj_extract",
             "roc-obj-ls=rocm_sdk_core._cli:roc_obj_ls",
         ]
+        + FLANG_CONSOLE_SCRIPTS
         + (
             [
                 # These tools are only available on Linux.
