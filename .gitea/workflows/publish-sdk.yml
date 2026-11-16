@@ -47,7 +47,7 @@ jobs:
           set -euo pipefail
           root_cmd=()
           if [ "$(id -u)" -ne 0 ]; then root_cmd=(sudo); fi
-          "${root_cmd[@]}" pacman -Syu --needed --noconfirm base-devel clang cmake ninja \
+          "${root_cmd[@]}" pacman -Syu --needed --noconfirm base-devel clang cmake ninja file \
             python python-pip python-joblib python-msgpack pkgconf flex bison gcc-fortran \
             patchelf numactl libdrm libelf libglvnd texinfo git curl rsync zstd xxd
       - uses: astral-sh/setup-uv@v10.3.0
