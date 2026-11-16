@@ -16,8 +16,8 @@
 	branch = mainline
 [submodule "rocm-libraries"]
 	path = rocm-libraries
-	url = https://github.com/ROCm/rocm-libraries
-	branch = develop
+	url = https://github.com/BakeLab/rocm-libraries
+	branch = trim
 [submodule "rocm-systems"]
 	path = rocm-systems
 	url = https://github.com/ROCm/rocm-systems.git
