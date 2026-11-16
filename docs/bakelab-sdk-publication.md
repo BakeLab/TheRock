@@ -34,5 +34,12 @@ consume the published lock through the existing updater; the workflow does not
 change host drivers or restart production services. Compiling and publishing
 packages does not establish a successful GPU workload.
 
+The workflow separates the long SDK build/package job from the short SDK publish
+job. The first job uploads the versioned wheels, source metadata and checksums as
+a seven-day Actions artifact. The publish job verifies the manifest and checksums
+before uploading to the private PyPI index. If publication fails, rerun only
+`sdk-publish`; the completed build is not repeated while its artifact remains
+available. The ROCm runtime-pack job starts only after publication succeeds.
+
 Deploy Breadkernel's frozen `THEROCK_REF` support and the `rocm-version` action
 input before enabling this workflow.
