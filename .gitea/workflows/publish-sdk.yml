@@ -13,12 +13,9 @@ permissions:
   contents: read
 
 jobs:
-  sdk:
+  sdk-build:
     runs-on: [self-hosted, linux, x64, cpu, on-demand]
     timeout-minutes: 1440
-    permissions:
-      contents: read
-      id-token: write
     outputs:
       version: ${{ steps.release.outputs.version }}
       date: ${{ steps.release.outputs.date }}
@@ -47,7 +44,7 @@ jobs:
           set -euo pipefail
           root_cmd=()
           if [ "$(id -u)" -ne 0 ]; then root_cmd=(sudo); fi
-          "${root_cmd[@]}" pacman -Syu --needed --noconfirm base-devel clang cmake ninja \
+          "${root_cmd[@]}" pacman -Syu --needed --noconfirm base-devel clang cmake ninja file \
             python python-pip python-joblib python-msgpack pkgconf flex bison gcc-fortran \
             patchelf numactl libdrm libelf libglvnd texinfo git curl rsync zstd xxd
       - uses: astral-sh/setup-uv@v10.3.0
@@ -60,7 +57,7 @@ jobs:
         run: |
           set -euo pipefail
           test "$(git -C therock rev-parse HEAD)" = "$SOURCE_SHA"
-          version="10.1.0.dev$(date -u +%Y%m%d)+rocm.10.1.gfx1201.znver4.g${SOURCE_SHA:0:8}.r${GITHUB_RUN_NUMBER}a${GITHUB_RUN_ATTEMPT}"
+          version="10.1.0.dev$(date -u +%Y%m%d)+rocm.10.1.gfx1201.znver4.g${SOURCE_SHA:0:8}.r${GITHUB_RUN_NUMBER}"
           echo "version=$version" >> "$GITHUB_OUTPUT"
           echo "date=$(date -u +%Y.%-m.%-d)" >> "$GITHUB_OUTPUT"
           echo "pipeline_ref=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
@@ -77,7 +74,7 @@ jobs:
           if [ "$jobs" -gt 32 ]; then jobs=32; fi
           export THEROCK_BUILD_JOBS="$jobs"
           bash build-therock.sh build
-      - name: Package and publish the SDK
+      - name: Build the SDK packages
         env:
           SOURCE_SHA: ${{ gitea.sha }}
           SDK_VERSION: ${{ steps.release.outputs.version }}
@@ -93,10 +90,73 @@ jobs:
           python3 therock-wheel-pipeline.py build --cpu-architecture znver4 \
             --therock-source "$GITHUB_WORKSPACE/therock" \
             --python "$GITHUB_WORKSPACE/therock/.venv/bin/python" --version "$SDK_VERSION"
-          python3 therock-wheel-pipeline.py publish --cpu-architecture znver4 --version "$SDK_VERSION"
+          mkdir -p .rocm-sdk-release/dist
+          cp .therock-build/gfx1201/znver4/python-packages/dist/* .rocm-sdk-release/dist/
+          (cd .rocm-sdk-release/dist && sha256sum * > ../SHA256SUMS)
+          python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+          Path('.rocm-sdk-release/manifest.json').write_text(json.dumps({
+              'version': os.environ['SDK_VERSION'],
+              'source_sha': os.environ['SOURCE_SHA'],
+              'cpu_architecture': 'znver4',
+              'gpu_architecture': 'gfx1201',
+          }, indent=2) + '\n')
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: rocm-sdk-${{ gitea.sha }}-${{ gitea.run_number }}
+          path: .rocm-sdk-release/
+          compression-level: 0
+          retention-days: 1
+          overwrite: true
+          if-no-files-found: error
+
+  sdk-publish:
+    needs: sdk-build
+    runs-on: [self-hosted, linux, x64, cpu, on-demand]
+    timeout-minutes: 60
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: builtin:checkout
+        with:
+          repository: BakeLab/breadkernel
+          ref: ${{ needs.sdk-build.outputs.pipeline_ref }}
+          token: ${{ secrets.BREADKERNEL_READ_TOKEN }}
+      - uses: actions/download-artifact@v4
+        with:
+          name: rocm-sdk-${{ needs.sdk-build.outputs.pipeline_ref }}-${{ gitea.run_number }}
+          path: .rocm-sdk-release
+      - uses: astral-sh/setup-uv@v10.3.0
+        with:
+          enable-cache: false
+      - name: Verify and publish the SDK packages
+        env:
+          SDK_VERSION: ${{ needs.sdk-build.outputs.version }}
+          SOURCE_SHA: ${{ needs.sdk-build.outputs.pipeline_ref }}
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+          manifest = json.loads(Path('.rocm-sdk-release/manifest.json').read_text())
+          expected = {
+              'version': os.environ['SDK_VERSION'],
+              'source_sha': os.environ['SOURCE_SHA'],
+              'cpu_architecture': 'znver4',
+              'gpu_architecture': 'gfx1201',
+          }
+          if manifest != expected:
+              raise SystemExit(f'SDK artifact manifest mismatch: {manifest!r}')
+          PY
+          (cd .rocm-sdk-release/dist && sha256sum --check ../SHA256SUMS)
+          python3 therock-wheel-pipeline.py publish --cpu-architecture znver4 \
+            --dist-dir "$GITHUB_WORKSPACE/.rocm-sdk-release/dist" --version "$SDK_VERSION"
 
   runtime-pack:
-    needs: sdk
+    needs: [sdk-build, sdk-publish]
     runs-on: [self-hosted, linux, x64, cpu, on-demand]
     timeout-minutes: 180
     permissions:
@@ -106,7 +166,7 @@ jobs:
       - uses: builtin:checkout
         with:
           repository: BakeLab/breadkernel
-          ref: ${{ needs.sdk.outputs.pipeline_ref }}
+          ref: ${{ needs.sdk-build.outputs.pipeline_ref }}
           token: ${{ secrets.BREADKERNEL_READ_TOKEN }}
       - uses: ./.gitea/actions/publish-accelerator
         with:
@@ -114,5 +174,5 @@ jobs:
           cpu-architecture: znver4
           architecture: amd64
           breadboard-ref: main
-          release-date: ${{ needs.sdk.outputs.date }}
-          rocm-version: ${{ needs.sdk.outputs.version }}
+          release-date: ${{ needs.sdk-build.outputs.date }}
+          rocm-version: ${{ needs.sdk-build.outputs.version }}
