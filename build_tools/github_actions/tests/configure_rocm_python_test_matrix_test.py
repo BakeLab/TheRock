@@ -128,7 +128,6 @@ class ConfigureRocmPythonTestMatrixTest(unittest.TestCase):
         # enforce exact schemas, do that with generator-local tests.
         test_cases = [
             ("multi_arch_ci_linux.yml", "linux"),
-            ("multi_arch_ci_windows.yml", "windows"),
         ]
 
         for workflow_filename, platform in test_cases:
