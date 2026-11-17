@@ -22,7 +22,6 @@ on:
         description: "Platform to fetch artifacts for"
         options:
           - linux
-          - windows
         default: "linux"
       package_version:
         description: "ROCm package version string (e.g. '7.13.0.dev0+abc123')"

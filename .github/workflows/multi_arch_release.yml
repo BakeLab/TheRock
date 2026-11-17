@@ -31,10 +31,6 @@ on:
         description: 'Comma-separated list of Linux GPU families. "all" = all, "none" or empty = skip.'
         type: string
         default: ""
-      windows_amdgpu_families:
-        description: 'Comma-separated list of Windows GPU families. "all" = all, "none" or empty = skip.'
-        type: string
-        default: ""
       repository:
         description: "Repository to checkout. Defaults to github.repository."
         type: string
@@ -88,10 +84,6 @@ on:
         description: 'Comma-separated list of Linux GPU families. "all" = all, "none" = skip platform.'
         type: string
         default: "gfx94x"
-      windows_amdgpu_families:
-        description: 'Comma-separated list of Windows GPU families. "all" = all, "none" = skip platform.'
-        type: string
-        default: "gfx110x"
       run_full_pytorch_tests:
         description: Run full PyTorch tests after scheduled nightly Linux PyTorch wheel builds complete.
         type: boolean
@@ -125,7 +117,6 @@ permissions:
 run-name: >-
   Multi-Arch Release (${{ inputs.release_type }})
   | Linux: ${{ inputs.linux_amdgpu_families || 'none' }}
-  | Windows: ${{ inputs.windows_amdgpu_families || 'none' }}
 
 jobs:
   notify_quartz_start:
@@ -154,7 +145,6 @@ jobs:
       build_jax: ${{ inputs.build_jax }}
       python_version: ${{ inputs.python_version }}
       linux_amdgpu_families: ${{ inputs.linux_amdgpu_families }}
-      windows_amdgpu_families: ${{ inputs.windows_amdgpu_families }}
       repository: ${{ inputs.repository || github.repository }}
       ref: ${{ inputs.ref }}
       quartz_tracking_id: ${{ inputs.enable_quartz_tracking && format('{0};{1}', github.run_id, inputs.release_type) || '' }}
@@ -185,30 +175,9 @@ jobs:
       actions: write  # Added permission to trigger workflows
       id-token: write  # Added permission for AWS S3 upload
 
-  windows_release:
-    name: Windows::${{ fromJSON(needs.setup.outputs.windows_build_config || '{}').build_variant_label || 'skip' }}
-    needs: setup
-    if: ${{ needs.setup.outputs.windows_build_config != '' }}
-    uses: ./.github/workflows/multi_arch_release_windows.yml
-    secrets: inherit
-    with:
-      build_config: ${{ needs.setup.outputs.windows_build_config }}
-      rocm_package_version: ${{ needs.setup.outputs.rocm_package_version }}
-      test_type: ${{ needs.setup.outputs.test_type }}
-      release_type: ${{ inputs.release_type }}
-      repository: ${{ inputs.repository || github.repository }}
-      ref: ${{ needs.setup.outputs.ref }}
-      build_pytorch: ${{ inputs.build_pytorch }}
-      python_version: ${{ inputs.python_version }}
-      quartz_tracking_id: ${{ inputs.enable_quartz_tracking && format('{0};{1}', github.run_id, inputs.release_type) || '' }}
-    permissions:
-      contents: read
-      actions: write  # Added permission to trigger workflows
-      id-token: write  # Added permission for AWS S3 upload
-
   notify_quartz_completed:
     if: ${{ always() && vars.NOTIFY_QUARTZ_ENABLED == 'true' }}
-    needs: [setup, linux_release, windows_release]
+    needs: ["setup", "linux_release"]
     name: "Quartz - completed - release"
     runs-on: ubuntu-24.04
     timeout-minutes: 10
