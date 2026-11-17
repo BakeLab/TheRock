@@ -24,16 +24,8 @@ on:
         description: 'Comma-separated Linux GPU families. "all" = all, "none" or empty = skip.'
         type: string
         default: ""
-      windows_amdgpu_families:
-        description: 'Comma-separated Windows GPU families. "all" = all, "none" or empty = skip.'
-        type: string
-        default: ""
       linux_test_labels:
         description: "Comma-separated list of test labels for Linux."
-        type: string
-        default: ""
-      windows_test_labels:
-        description: "Comma-separated list of test labels for Windows."
         type: string
         default: ""
       prebuilt_stages:
@@ -132,18 +124,12 @@ on:
       linux_build_config:
         description: JSON object with Linux build configuration, or empty string if skipped.
         value: ${{ jobs.setup.outputs.linux_build_config }}
-      windows_build_config:
-        description: JSON object with Windows build configuration, or empty string if skipped.
-        value: ${{ jobs.setup.outputs.windows_build_config }}
       test_type:
         description: "The test type to run (quick, standard, comprehensive, full)."
         value: ${{ jobs.setup.outputs.test_type }}
       linux_test_labels:
         description: ROCm projects to run Linux tests on. Optional filter.
         value: ${{ jobs.setup.outputs.linux_test_labels }}
-      windows_test_labels:
-        description: ROCm projects to run Windows tests on. Optional filter.
-        value: ${{ jobs.setup.outputs.windows_test_labels }}
       rocm_package_version:
         description: ROCm package version (primarily for Python packages).
         value: ${{ jobs.setup.outputs.rocm_package_version }}
@@ -173,10 +159,8 @@ jobs:
     outputs:
       enable_build_jobs: ${{ steps.configure.outputs.enable_build_jobs }}
       linux_build_config: ${{ steps.configure.outputs.linux_build_config }}
-      windows_build_config: ${{ steps.configure.outputs.windows_build_config }}
       test_type: ${{ steps.configure.outputs.test_type }}
       linux_test_labels: ${{ steps.configure.outputs.linux_test_labels }}
-      windows_test_labels: ${{ steps.configure.outputs.windows_test_labels }}
       rocm_package_version: ${{ steps.rocm_package_version.outputs.rocm_package_version }}
       rocm_deb_package_version: ${{ steps.rocm_package_version.outputs.rocm_deb_package_version }}
       rocm_rpm_package_version: ${{ steps.rocm_package_version.outputs.rocm_rpm_package_version }}
@@ -229,9 +213,9 @@ jobs:
           BUILD_NATIVE_LINUX: ${{ inputs.build_native_linux }}
           PYTHON_VERSION: ${{ inputs.python_version }}
           LINUX_AMDGPU_FAMILIES: ${{ inputs.linux_amdgpu_families }}
-          WINDOWS_AMDGPU_FAMILIES: ${{ inputs.windows_amdgpu_families }}
+          WINDOWS_AMDGPU_FAMILIES: 'none'
           LINUX_TEST_LABELS: ${{ inputs.linux_test_labels }}
-          WINDOWS_TEST_LABELS: ${{ inputs.windows_test_labels }}
+          WINDOWS_TEST_LABELS: ''
           PREBUILT_STAGES: ${{ inputs.prebuilt_stages }}
           BUILD_STAGES: ${{ inputs.build_stages }}
           BASELINE_RUN_ID: ${{ inputs.baseline_run_id }}

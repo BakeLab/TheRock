@@ -23,7 +23,6 @@ on:
         description: "Platform to fetch artifacts for"
         options:
           - linux
-          - windows
         default: "linux"
       release_type:
         description: 'Release type: "ci" or "dev"'
