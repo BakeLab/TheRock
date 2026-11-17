@@ -13,7 +13,6 @@ jsonschema==4.23.0
 packaging==25.0
 python-debian==1.1.1
 setuptools>=80.9.0,<82.0.0
-python-magic==0.4.27; sys_platform != "win32"
 
 # tensilelite/rocisa test requirements
 # TODO: Keep in sync with rocm-libraries/projects/hipblaslt/tensilelite/requirements.txt
@@ -37,3 +36,5 @@ toml>=0.10.2
 # which pulls this in via deb_package.py and rpm_package.py.
 # Keep the specifier in sync with requirements.txt.
 jinja2>=3.0.0
+
+pyelftools>=0.29

@@ -8,7 +8,6 @@ from typing import Callable, Sequence
 import importlib.util
 import io
 import json
-import re
 import os
 from pathlib import Path
 import platform
@@ -25,9 +24,7 @@ from .exe_stub_gen import generate_exe_link_stub
 is_windows = platform.system() == "Windows"
 
 if not is_windows:
-    # Used on Linux to check file types. Buggy/broken on Windows, but file
-    # types are generally known from file extensions there.
-    import magic
+    from elftools.elf.elffile import ELFFile
 
 BUILD_TOOLS_DIR = Path(__file__).resolve().parent.parent
 PYTHON_PACKAGING_DIR = BUILD_TOOLS_DIR / "packaging" / "python" / "templates"
@@ -764,11 +761,6 @@ class PopulatedDistPackage:
                 self._normalize_rpath(dest_path)
 
 
-MAGIC_AR_MATCH = re.compile("ar archive")
-MAGIC_EXECUTABLE_MATCH = re.compile("ELF[^,]+executable,")
-MAGIC_SO_MATCH = re.compile("ELF[^,]+shared object,")
-
-
 def get_file_type(dir_entry: os.DirEntry[str] | Path) -> str:
     if isinstance(dir_entry, os.DirEntry):
         path = Path(dir_entry.path)
@@ -794,18 +786,34 @@ def get_file_type(dir_entry: os.DirEntry[str] | Path) -> str:
         return "exe"
 
     if is_windows:
-        # Don't try to use 'magic' on Windows, since it is buggy/broken.
-        # Hopefully the file type was covered by an extension check above.
+        # Windows file types are handled by the extension checks above.
         return "other"
 
-    desc = magic.from_file(path)
-    if MAGIC_EXECUTABLE_MATCH.search(desc):
-        return "exe"
-    if MAGIC_SO_MATCH.search(desc):
+    # Only host ELF binaries need RPATH/SONAME processing. Read the format
+    # directly; no libmagic shared library or external magic database is needed.
+    with open(path, "rb") as stream:
+        signature = stream.read(8)
+        if signature in (b"!<arch>\n", b"!<thin>\n"):
+            return "ar"
+        if not signature.startswith(b"\x7fELF"):
+            return "other"
+        stream.seek(0)
+        elf = ELFFile(stream)
+        if elf["e_machine"] == "EM_AMDGPU":
+            return "hsaco"
+        if elf["e_type"] == "ET_EXEC":
+            return "exe"
+        if elf["e_type"] != "ET_DYN":
+            return "other"
+        for segment in elf.iter_segments():
+            if segment["p_type"] == "PT_INTERP":
+                return "exe"
+            if segment["p_type"] == "PT_DYNAMIC":
+                for tag in segment.iter_tags():
+                    # DF_1_PIE also identifies static PIE without PT_INTERP.
+                    if tag.entry.d_tag == "DT_FLAGS_1" and tag.entry.d_val & 0x08000000:
+                        return "exe"
         return "so"
-    if MAGIC_AR_MATCH.search(desc):
-        return "ar"
-    return "other"
 
 
 def get_soname(sofile: Path) -> str:
