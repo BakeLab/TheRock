@@ -12,6 +12,7 @@ These tests cover:
 import json
 import os
 import stat
+import struct
 import subprocess
 import tempfile
 import unittest
@@ -22,7 +23,12 @@ import sys
 sys.path.insert(0, os.fspath(Path(__file__).parent.parent))
 
 from _therock_utils.artifacts import ArtifactCatalog
-from _therock_utils.py_packaging import Parameters, PopulatedDistPackage, PopulatedFiles
+from _therock_utils.py_packaging import (
+    Parameters,
+    PopulatedDistPackage,
+    PopulatedFiles,
+    get_file_type,
+)
 from build_python_packages import validate_kpack_split_target_completeness
 
 
@@ -51,6 +57,102 @@ class TmpDirTestCase(unittest.TestCase):
 # ---------------------------------------------------------------------------
 # Pure unit tests for PopulatedFiles
 # ---------------------------------------------------------------------------
+
+
+class FileTypeTest(TmpDirTestCase):
+    def elf_file(self, *, bits=64, endian="<", kind=3, machine=62, segment=0):
+        ident = (
+            b"\x7fELF"
+            + bytes([2 if bits == 64 else 1, 1 if endian == "<" else 2, 1])
+            + bytes(9)
+        )
+        header_size, ph_size = (64, 56) if bits == 64 else (52, 32)
+        header = struct.pack(
+            endian + ("HHIQQQIHHHHHH" if bits == 64 else "HHIIIIIHHHHHH"),
+            kind,
+            machine,
+            1,
+            0,
+            header_size if segment else 0,
+            0,
+            0,
+            header_size,
+            ph_size,
+            (2 if segment == 2 else int(bool(segment))),
+            0,
+            0,
+            0,
+        )
+        data = ident + header
+        if segment:
+            offset = header_size + ph_size * (2 if segment == 2 else 1)
+            payload = (
+                struct.pack(
+                    endian + "QQQQQQ", 0x6FFFFFFB, 0x08000000, 5, offset + 48, 0, 0
+                )
+                + b"\0"
+                if segment == 2
+                else b"/ld.so\0"
+            )
+            data += struct.pack(
+                endian + "IIQQQQQQ",
+                segment,
+                0,
+                offset,
+                0,
+                0,
+                len(payload),
+                len(payload),
+                1,
+            )
+            if segment == 2:
+                data += struct.pack(
+                    endian + "IIQQQQQQ",
+                    1,
+                    0,
+                    0,
+                    0,
+                    0,
+                    offset + len(payload),
+                    offset + len(payload),
+                    1,
+                )
+            data += payload
+        path = self.temp_dir / "binary"
+        path.write_bytes(data)
+        return path
+
+    def test_elf_types(self):
+        for bits in (32, 64):
+            for endian in ("<", ">"):
+                for kind, expected in ((1, "other"), (2, "exe"), (3, "so")):
+                    with self.subTest(bits=bits, endian=endian, kind=kind):
+                        self.assertEqual(
+                            get_file_type(
+                                self.elf_file(bits=bits, endian=endian, kind=kind)
+                            ),
+                            expected,
+                        )
+
+    def test_pie_and_device_code(self):
+        self.assertEqual(get_file_type(self.elf_file(segment=3)), "exe")
+        self.assertEqual(get_file_type(self.elf_file(segment=2)), "exe")
+        self.assertEqual(get_file_type(self.elf_file(machine=224)), "hsaco")
+
+    def test_archive_data_and_links(self):
+        for content, expected in (
+            (b"!<arch>\n", "ar"),
+            (b"!<thin>\n", "ar"),
+            (b"", "other"),
+            (b"ordinary data", "other"),
+        ):
+            path = self.temp_dir / "data"
+            path.write_bytes(content)
+            self.assertEqual(get_file_type(path), expected)
+        link = self.temp_dir / "link"
+        link.symlink_to("missing")
+        self.assertEqual(get_file_type(link), "symlink")
+        self.assertEqual(get_file_type(self.temp_dir), "dir")
 
 
 class PopulatedFilesTest(unittest.TestCase):
