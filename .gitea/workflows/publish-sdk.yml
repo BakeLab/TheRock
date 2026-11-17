@@ -20,6 +20,7 @@ jobs:
       version: ${{ steps.release.outputs.version }}
       date: ${{ steps.release.outputs.date }}
       pipeline_ref: ${{ steps.release.outputs.pipeline_ref }}
+      source_sha: ${{ gitea.sha }}
     steps:
       - uses: builtin:checkout
         with:
@@ -107,6 +108,7 @@ jobs:
         with:
           name: rocm-sdk-${{ gitea.sha }}-${{ gitea.run_number }}
           path: .rocm-sdk-release/
+          include-hidden-files: true
           compression-level: 0
           retention-days: 1
           overwrite: true
@@ -127,7 +129,7 @@ jobs:
           token: ${{ secrets.BREADKERNEL_READ_TOKEN }}
       - uses: actions/download-artifact@v4
         with:
-          name: rocm-sdk-${{ needs.sdk-build.outputs.pipeline_ref }}-${{ gitea.run_number }}
+          name: rocm-sdk-${{ needs.sdk-build.outputs.source_sha }}-${{ gitea.run_number }}
           path: .rocm-sdk-release
       - uses: astral-sh/setup-uv@v10.3.0
         with:
@@ -135,7 +137,7 @@ jobs:
       - name: Verify and publish the SDK packages
         env:
           SDK_VERSION: ${{ needs.sdk-build.outputs.version }}
-          SOURCE_SHA: ${{ needs.sdk-build.outputs.pipeline_ref }}
+          SOURCE_SHA: ${{ needs.sdk-build.outputs.source_sha }}
         run: |
           set -euo pipefail
           python3 - <<'PY'
