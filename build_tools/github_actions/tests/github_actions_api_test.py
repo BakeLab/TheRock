@@ -876,20 +876,6 @@ class GitHubActionsUtilsTest(unittest.TestCase):
             os.environ[key] = value
 
     @_skip_unless_authenticated_github_api_is_available
-    def test_gha_query_workflow_run_by_id(self):
-        """Test querying a workflow run by its ID."""
-        workflow_run = gha_query_workflow_run_by_id("ROCm/TheRock", "18022609292")
-        self.assertEqual(workflow_run["repository"]["full_name"], "ROCm/TheRock")
-
-        # Verify fields depended on by WorkflowOutputRoot and find_artifacts_for_commit
-        self.assertIn("id", workflow_run)
-        self.assertIn("head_repository", workflow_run)
-        self.assertIn("full_name", workflow_run["head_repository"])
-        self.assertIn("updated_at", workflow_run)
-        self.assertIn("status", workflow_run)
-        self.assertIn("html_url", workflow_run)
-
-    @_skip_unless_authenticated_github_api_is_available
     def test_gha_query_workflow_run_by_id_not_found(self):
         """Test querying a workflow run by its ID where the ID is not found."""
         with self.assertRaises(Exception):

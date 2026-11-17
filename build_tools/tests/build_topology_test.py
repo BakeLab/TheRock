@@ -1321,8 +1321,9 @@ class RealTopologyTest(unittest.TestCase):
         self.assertIn("sysdeps", emulation_inbound)
 
         comm_libs_inbound = topology.get_inbound_artifacts("comm-libs")
-        self.assertIn("rocjitsu", comm_libs_inbound)
-        self.assertIn("rocjitsu-hotswap", comm_libs_inbound)
+        # Communication libraries no longer depend on the emulation tools.
+        self.assertNotIn("rocjitsu", comm_libs_inbound)
+        self.assertNotIn("rocjitsu-hotswap", comm_libs_inbound)
 
     def test_hipkernelprovider_is_split_per_arch(self):
         # rocKE ships per-arch AOT bundles under engines/arch_content/rocke/<arch>,

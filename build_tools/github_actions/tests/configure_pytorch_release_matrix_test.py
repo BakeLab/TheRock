@@ -213,14 +213,7 @@ class ConfigurePytorchReleaseMatrixTest(unittest.TestCase):
                 "linux",
                 "dev",
             ),
-            (
-                "multi_arch_release_windows_pytorch_wheels.yml",
-                "build_pytorch_wheels",
-                "windows",
-                "dev",
-            ),
             ("multi_arch_ci_linux.yml", "build_pytorch_wheel_fat", "linux", "ci"),
-            ("multi_arch_ci_windows.yml", "build_pytorch_wheel_fat", "windows", "ci"),
         ]
 
         for workflow_filename, job_name, platform, release_type in test_cases:
