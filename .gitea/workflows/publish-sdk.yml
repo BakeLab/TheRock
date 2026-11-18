@@ -167,14 +167,21 @@ jobs:
     steps:
       - uses: builtin:checkout
         with:
+          repository: BakeLab/breadboard
+          ref: main
+          token: ${{ gitea.token }}
+      - uses: builtin:checkout
+        with:
+          path: bb-ci
           repository: BakeLab/breadkernel
           ref: ${{ needs.sdk-build.outputs.pipeline_ref }}
           token: ${{ secrets.BREADKERNEL_READ_TOKEN }}
       - uses: ./.gitea/actions/publish-accelerator
+        env:
+          BREADKERNEL_SOURCE: ${{ github.workspace }}/bb-ci
         with:
           accelerator: rocm
           cpu-architecture: znver4
           architecture: amd64
-          breadboard-ref: main
           release-date: ${{ needs.sdk-build.outputs.date }}
           rocm-version: ${{ needs.sdk-build.outputs.version }}
