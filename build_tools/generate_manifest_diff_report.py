@@ -35,6 +35,7 @@ Example usage:
 
 # Standard library imports
 import argparse
+import os
 import html
 import sys
 import urllib.parse
@@ -271,7 +272,11 @@ def resolve_commits(
             "--start is required unless --find-last-run or --pr-base-ref is provided"
         )
 
-    therock = f"{ROCM_ORG}/{THEROCK_REPO}"
+    therock = (
+        os.environ.get("THEROCK_MANIFEST_REPOSITORY")
+        or os.environ.get("GITHUB_REPOSITORY")
+        or f"{ROCM_ORG}/{THEROCK_REPO}"
+    )
 
     # Resolve end first; --pr-base-ref needs end_sha to compute the merge-base.
     if args.workflow_mode:
