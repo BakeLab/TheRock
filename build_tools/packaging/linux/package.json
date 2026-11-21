@@ -260,18 +260,6 @@
             ]
           }
         ]
-      },
-      {
-        "Artifact": "wsl-rocdxg",
-        "Artifact_Subdir": [
-          {
-            "Name": "wsl-rocdxg",
-            "Components": [
-              "lib",
-              "doc"
-            ]
-          }
-        ]
       }
     ],
     "Gfxarch": "False"
@@ -340,17 +328,6 @@
         "Artifact_Subdir": [
           {
             "Name": "amd-comgr",
-            "Components": [
-              "dev"
-            ]
-          }
-        ]
-      },
-      {
-        "Artifact": "wsl-rocdxg",
-        "Artifact_Subdir": [
-          {
-            "Name": "wsl-rocdxg",
             "Components": [
               "dev"
             ]
