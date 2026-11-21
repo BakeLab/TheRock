@@ -88,7 +88,7 @@ on our python package index pages. Here's how we would do that:
 First, edit [`update_dependencies.py`](./update_dependencies.py) with the new
 package name, version, and project mapping.
 
-Note which `--package {jax,torch,rocm}` your changes affect. Then, roll out
+Note which `--package {torch,rocm}` your changes affect. Then, roll out
 those changes to the dev bucket:
 
 1. Sanity test your changes with a dry run:

@@ -50,7 +50,6 @@ REPO_STREAMS = ("dev", "nightly", "rc", "stable-staging")
 REPO_BUCKET_PRODUCT_NAMES = {
     "core": "core",
     "pytorch": "pytorch",
-    "jax": "jax",
 }
 
 # ROCm Core tarball prefixes under the structured layout, keyed by variant.
@@ -216,7 +215,7 @@ def plan_key_copies(
 
 # Product classification for the flat local promotion layout: the local
 # directory (e.g. <output-dir>/wheels/, see how_to_do_release.md) where
-# downloaded core, PyTorch, and JAX artifacts sit side-by-side, unsorted by
+# downloaded core and PyTorch artifacts sit side-by-side, unsorted by
 # product, before upload_release_packages.py --structured routes each one to
 # its own product bucket. Kept as an explicit allowlist (rather than
 # defaulting unmatched packages to "core") so an unrecognized or renamed
@@ -233,7 +232,6 @@ def plan_key_copies(
 # "rocm-sdk-device" once pep503-normalized).
 PYTORCH_PACKAGE_NAMES = frozenset({"apex", "triton"})
 PYTORCH_PACKAGE_PREFIXES = ("torch", "amd-torch")
-JAX_PACKAGE_PREFIXES = ("jax", "jaxlib", "jax-rocm")
 CORE_PACKAGE_PREFIXES = (
     "rocm-sdk-core",
     "rocm-sdk-devel",
@@ -249,25 +247,23 @@ def infer_structured_product(filename: str) -> str:
 
     Args:
         filename: Wheel or sdist filename from the flat local promotion
-            layout (core/pytorch/jax artifacts intermixed in one directory).
+            layout (core/pytorch artifacts intermixed in one directory).
 
     Returns:
-        One of "pytorch", "jax", "core".
+        One of "pytorch", "core".
 
     Raises:
         ValueError: if filename cannot be parsed as a wheel/sdist, or its
-            package name doesn't match any known core/pytorch/jax package.
+            package name doesn't match any known core/pytorch package.
     """
     package_name = package_name_from_filename(filename)
     if package_name in PYTORCH_PACKAGE_NAMES or package_name.startswith(
         PYTORCH_PACKAGE_PREFIXES
     ):
         return "pytorch"
-    if package_name.startswith(JAX_PACKAGE_PREFIXES):
-        return "jax"
     if package_name.startswith(CORE_PACKAGE_PREFIXES):
         return "core"
     raise ValueError(
         f"Cannot infer structured product for package {package_name!r} "
-        f"(file: {filename!r}); expected a known core/pytorch/jax package"
+        f"(file: {filename!r}); expected a known core/pytorch package"
     )

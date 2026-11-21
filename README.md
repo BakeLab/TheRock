@@ -14,7 +14,7 @@ TheRock includes:
 
 - Nightly releases of ROCm and PyTorch
 - A CMake super-project for HIP and ROCm source builds
-- Support for building PyTorch and JAX with ROCm from source
+- Support for building PyTorch with ROCm from source
 - Operating system support including multiple Linux distributions and native Windows
 - Tools for developing individual ROCm components
 - Comprehensive CI/CD pipelines for building, testing, and releasing supported components
@@ -23,7 +23,7 @@ TheRock includes:
 
 > [!IMPORTANT]
 > See the [Releases Page](RELEASES.md) for instructions on how to install prebuilt
-> ROCm, PyTorch, and JAX packages.
+> ROCm and PyTorch packages.
 
 ## Project status
 
@@ -42,7 +42,6 @@ Multi-arch releases (all GPU architectures):
 | PyTorch packages - Linux build/test    | [![Multi-Arch Release Linux PyTorch Wheels](https://github.com/ROCm/rockrel/actions/workflows/multi_arch_release_linux_pytorch_wheels.yml/badge.svg)](https://github.com/ROCm/rockrel/actions/workflows/multi_arch_release_linux_pytorch_wheels.yml)       |
 | PyTorch packages - Windows build/test  | [![Multi-Arch Release Windows PyTorch Wheels](https://github.com/ROCm/rockrel/actions/workflows/multi_arch_release_windows_pytorch_wheels.yml/badge.svg)](https://github.com/ROCm/rockrel/actions/workflows/multi_arch_release_windows_pytorch_wheels.yml) |
 | PyTorch packages - full tests          | [![Test PyTorch Wheels (Full Suite)](https://github.com/ROCm/rockrel/actions/workflows/test_pytorch_wheels_full.yml/badge.svg)](https://github.com/ROCm/rockrel/actions/workflows/test_pytorch_wheels_full.yml)                                            |
-| JAX packages - Linux build/test        | [![Multi-Arch Release Linux JAX Wheels](https://github.com/ROCm/rockrel/actions/workflows/multi_arch_release_linux_jax_wheels.yml/badge.svg)](https://github.com/ROCm/rockrel/actions/workflows/multi_arch_release_linux_jax_wheels.yml)                   |
 
 ## Building from source
 
@@ -183,7 +182,6 @@ enable/disable selected subsets:
 | `-DTHEROCK_ENABLE_PROFILER=OFF`    | Disables profilers                     |
 | `-DTHEROCK_ENABLE_DC_TOOLS=OFF`    | Disables data center tools             |
 | `-DTHEROCK_ENABLE_MEDIA_LIBS=OFF`  | Disables all media libraries           |
-| `-DTHEROCK_ENABLE_WSL=ON`          | Enables WSL-specific artifacts         |
 | `-DTHEROCK_ENABLE_EMULATION=ON`    | Enables emulation tools                |
 
 Individual features can be controlled separately (typically in combination with
@@ -199,7 +197,6 @@ minimal build):
 | `-DTHEROCK_ENABLE_CORE_RUNTIME=ON`     | Enables the core runtime components and tools       |
 | `-DTHEROCK_ENABLE_HIP_RUNTIME=ON`      | Enables the HIP runtime components                  |
 | `-DTHEROCK_ENABLE_OCL_RUNTIME=ON`      | Enables the OpenCL runtime components               |
-| `-DTHEROCK_ENABLE_WSL_ROCDXG=ON`       | Enables the WSL ROCDXG bridge library               |
 | `-DTHEROCK_ENABLE_ROCGDB=ON`           | Enables the ROCm debugger (ROCgdb)                  |
 | `-DTHEROCK_ENABLE_ROCPROFV3=ON`        | Enables rocprofv3                                   |
 | `-DTHEROCK_ENABLE_ROCPROFSYS=ON`       | Enables rocprofiler-systems                         |

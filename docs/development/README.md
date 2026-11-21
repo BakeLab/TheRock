@@ -32,7 +32,6 @@
 - [CI Behavior Manipulation](ci_behavior_manipulation.md)
 - [Stage Reuse](stage_reuse.md)
 - [CCache Troubleshooting](ccache_troubleshooting.md)
-- [WSL ROCDXG CI Stage](wsl_rocdxg.md)
 
 ### Other topics
 

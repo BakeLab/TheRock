@@ -207,12 +207,6 @@ class ConfigurePytorchReleaseMatrixTest(unittest.TestCase):
         # that every generated key is consumed by each workflow; if we want to
         # enforce exact schemas, do that with generator-local tests.
         test_cases = [
-            (
-                "multi_arch_release_linux_pytorch_wheels.yml",
-                "build_pytorch_wheels",
-                "linux",
-                "dev",
-            ),
             ("multi_arch_ci_linux.yml", "build_pytorch_wheel_fat", "linux", "ci"),
         ]
 

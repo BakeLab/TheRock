@@ -184,7 +184,7 @@ class TestProductReleaseHelpers(unittest.TestCase):
             ("dev-bkc", "bkc"),
             ("nightly-bkc", "bkc"),
         ):
-            for product in ("core", "pytorch", "jax"):
+            for product in ("core", "pytorch"):
                 with self.subTest(release_type=release_type, product=product):
                     config = get_product_release_bucket_config(release_type, product)
                     self.assertEqual(

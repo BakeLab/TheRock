@@ -125,7 +125,6 @@ Internal release types map to public streams as follows:
 | ----------------------------------- | -------------------------------------------------------- | ---------------------------------------------------------------------- |
 | `therock-repo-amd-<stream>-core`    | ROCm Core Python packages, tarballs, and native packages | `v5/rocm/core/{whl-next,tarball,tarball-asan,packages,packages-asan}/` |
 | `therock-repo-amd-<stream>-pytorch` | PyTorch Python packages                                  | `v5/rocm/pytorch/whl-next/`                                            |
-| `therock-repo-amd-<stream>-jax`     | JAX Python packages                                      | `v5/rocm/jax/whl-next/`                                                |
 
 Public downloads use the matching stream hostname and omit the internal `v5`
 prefix. For example, nightly Core tarballs are at

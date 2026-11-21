@@ -878,19 +878,13 @@ GFX_AWARE_WHEEL_PREFIXES = (
     "torchvision-",
 )
 
-# The JAX plugin/pjrt wheels embed the ROCm major version in their package name
-# (jax_rocm7_plugin for ROCm 7, jax_rocm10_plugin for ROCm 10), so they are
-# matched by pattern instead of listed once per ROCm release.
-JAX_ROCM_PACKAGE_PATTERN = re.compile(r"^jax_rocm\d+_(plugin|pjrt)$")
-
-
 def wheel_apply_gfx_keep_list(
     new_dir_path: pathlib.Path, keep_archs: list[str]
 ) -> None:
     """Apply positive-list arch filtering inside an unpacked wheel/sdist dir.
 
     Only runs on wheels listed in `GFX_AWARE_WHEEL_PREFIXES`; everything else
-    (apex, triton, jaxlib, ...) is a no-op early-exit. Within a matched wheel,
+    (apex, triton, ...) is a no-op early-exit. Within a matched wheel,
     multi-arch METADATA/PKG-INFO/requires.txt/_dist_info.py files are rewritten
     to retain only `keep_archs`; single-arch files are left untouched.
     """
@@ -994,8 +988,6 @@ def wheel_change_extra_files(
     # rocm-* package to the build's rocm version. Rewrite those, then return.
     if "device_gfx" in new_dir_path.name:
         return
-    if JAX_ROCM_PACKAGE_PATTERN.match(package_name_no_version):
-        return
 
     # If more files need specialized rewrites, replace the parallel file groups
     # below with (path, rewrite function) pairs so the dispatch stays explicit.
@@ -1029,7 +1021,7 @@ def wheel_change_extra_files(
         ]
     else:
         # we have multiple packages that have a version.py that needs updating
-        need_change_version_py = ["torchaudio", "torchvision", "jaxlib"]
+        need_change_version_py = ["torchaudio", "torchvision"]
         if any(pkg in package_name_no_version for pkg in need_change_version_py):
             files_to_change = [
                 new_dir_path / package_name_no_version / "version.py",

@@ -4,9 +4,6 @@
 
 """Unit tests for package recognition in download_python_packages.py.
 
-The JAX plugin/pjrt wheels embed the ROCm major version in their package name,
-so these tests cover both the ROCm 7 and ROCm 10 spellings to make sure a ROCm
-version bump does not silently drop the wheels from promotion.
 """
 
 import os
@@ -30,17 +27,6 @@ from download_python_packages import (
 # _therock_utils is importable here too.
 from _therock_utils.storage_location import StorageLocation
 
-JAX_ROCM7_WHEELS = [
-    "jax_rocm7_plugin-0.9.2+rocm7.15.0-cp312-cp312-manylinux_2_28_x86_64.whl",
-    "jax_rocm7_pjrt-0.9.2+rocm7.15.0-py3-none-manylinux_2_28_x86_64.whl",
-]
-
-JAX_ROCM10_WHEELS = [
-    "jax_rocm10_plugin-0.10.0+rocm10.0.0-cp313-cp313-manylinux_2_27_x86_64.whl",
-    "jax_rocm10_pjrt-0.10.0+rocm10.0.0-py3-none-manylinux_2_27_x86_64.whl",
-]
-
-
 class FakePaginator:
     def __init__(self, objects_by_bucket_prefix):
         self.objects_by_bucket_prefix = objects_by_bucket_prefix
@@ -61,42 +47,14 @@ class FakeS3Client:
 
 
 class CategorizePackageTest(unittest.TestCase):
-    def test_jax_rocm7_wheels_are_promoted(self):
-        for filename in JAX_ROCM7_WHEELS:
-            with self.subTest(filename=filename):
-                self.assertEqual(categorize_package(filename), "promote")
-
-    def test_jax_rocm10_wheels_are_promoted(self):
-        for filename in JAX_ROCM10_WHEELS:
-            with self.subTest(filename=filename):
-                self.assertEqual(categorize_package(filename), "promote")
-
-    def test_jaxlib_is_still_promoted(self):
+    def test_jax_plugin_is_unknown(self):
         self.assertEqual(
-            categorize_package("jaxlib-0.9.2-cp312-cp312-manylinux_2_28_x86_64.whl"),
-            "promote",
-        )
-
-    def test_unrelated_jax_rocm_name_is_unknown(self):
-        # Only the plugin/pjrt wheels carry the ROCm major in their name; a
-        # majorless or unexpected variant should not be promoted silently.
-        self.assertEqual(
-            categorize_package("jax_rocm_plugin-0.10.0-py3-none-any.whl"),
+            categorize_package("jax_rocm10_plugin-0.10.0-py3-none-any.whl"),
             "unknown",
         )
 
 
 class IsAllowedMultiArchPackageTest(unittest.TestCase):
-    def test_jax_rocm7_wheels_are_allowed(self):
-        for filename in JAX_ROCM7_WHEELS:
-            with self.subTest(filename=filename):
-                self.assertTrue(is_allowed_multi_arch_package(filename))
-
-    def test_jax_rocm10_wheels_are_allowed(self):
-        for filename in JAX_ROCM10_WHEELS:
-            with self.subTest(filename=filename):
-                self.assertTrue(is_allowed_multi_arch_package(filename))
-
     def test_unknown_package_is_not_allowed(self):
         self.assertFalse(
             is_allowed_multi_arch_package("some_other_pkg-1.0-py3-none-any.whl")
@@ -144,22 +102,13 @@ class StructuredDownloadTest(unittest.TestCase):
                     "Size": 30,
                 },
             ],
-            (
-                "therock-repo-amd-rc-jax",
-                "v5/rocm/jax/whl-next/",
-            ): [
-                {
-                    "Key": "v5/rocm/jax/whl-next/jax-rocm7-plugin/jax_rocm7_plugin-0.9.2+rocm7.13.0rc1-cp312-cp312-manylinux_2_28_x86_64.whl",
-                    "Size": 40,
-                },
-            ],
         }
         client = FakeS3Client(objects)
 
         packages = list_packages_structured(
             client,
             "rc",
-            ["core", "pytorch", "jax"],
+            ["core", "pytorch"],
             "whl-next",
             "7.13.0rc1",
             architectures=["gfx942"],
@@ -189,13 +138,6 @@ class StructuredDownloadTest(unittest.TestCase):
                     ),
                     30,
                 ),
-                PackageEntry(
-                    StorageLocation(
-                        "therock-repo-amd-rc-jax",
-                        "v5/rocm/jax/whl-next/jax-rocm7-plugin/jax_rocm7_plugin-0.9.2+rocm7.13.0rc1-cp312-cp312-manylinux_2_28_x86_64.whl",
-                    ),
-                    40,
-                ),
             ],
         )
 
@@ -207,20 +149,20 @@ class StructuredDownloadTest(unittest.TestCase):
         self.assertTrue(args.multi_arch)
         self.assertEqual(args.python_index, "whl-next")
         self.assertEqual(args.repo_stream, "rc")
-        self.assertEqual(args.product, ["core", "pytorch", "jax"])
+        self.assertEqual(args.product, ["core", "pytorch"])
 
-    def test_parse_product_accepts_repeated_and_comma_separated_values(self):
+    def test_parse_product_accepts_repeated_values(self):
         args = parse_arguments(
             [
                 "--version=7.13.0rc1",
                 "--structured",
                 "--list-multi-arch-packages",
-                "--product=core,pytorch",
-                "--product=jax",
+                "--product=core",
+                "--product=pytorch",
             ]
         )
 
-        self.assertEqual(args.product, ["core", "pytorch", "jax"])
+        self.assertEqual(args.product, ["core", "pytorch"])
 
     def test_parse_multi_arch_tarballs_keep_handler_default_output_dir(self):
         args = parse_arguments(

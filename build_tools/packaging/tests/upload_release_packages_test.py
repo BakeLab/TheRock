@@ -79,10 +79,6 @@ class StructuredUploadTest(unittest.TestCase):
                 wheels
                 / "amd_torch_device_gfx942-2.10.0+rocm7.13.0-py3-none-linux_x86_64.whl"
             ).write_text("x")
-            (
-                wheels
-                / "jax_rocm7_plugin-0.9.2+rocm7.13.0-cp312-cp312-manylinux_2_28_x86_64.whl"
-            ).write_text("x")
 
             output = io.StringIO()
             with contextlib.redirect_stdout(output):
@@ -97,7 +93,7 @@ class StructuredUploadTest(unittest.TestCase):
                 )
 
             text = output.getvalue()
-            self.assertEqual(count, 4)
+            self.assertEqual(count, 3)
             self.assertIn(
                 "s3://therock-repo-amd-rc-core/v5/rocm/core/whl-next/rocm-sdk-core/rocm_sdk_core-7.13.0-py3-none-linux_x86_64.whl",
                 text,
@@ -108,10 +104,6 @@ class StructuredUploadTest(unittest.TestCase):
             )
             self.assertIn(
                 "s3://therock-repo-amd-rc-pytorch/v5/rocm/pytorch/whl-next/amd-torch-device-gfx942/amd_torch_device_gfx942-2.10.0+rocm7.13.0-py3-none-linux_x86_64.whl",
-                text,
-            )
-            self.assertIn(
-                "s3://therock-repo-amd-rc-jax/v5/rocm/jax/whl-next/jax-rocm7-plugin/jax_rocm7_plugin-0.9.2+rocm7.13.0-cp312-cp312-manylinux_2_28_x86_64.whl",
                 text,
             )
 

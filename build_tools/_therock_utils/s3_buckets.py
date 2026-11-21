@@ -94,7 +94,7 @@ _ALLOWED_RELEASE_TYPES = {
 }
 
 _ALLOWED_RELEASE_BUCKET_TYPES = {"tarball", "python", "packages"}
-_ALLOWED_RELEASE_PRODUCTS = {"core", "pytorch", "jax"}
+_ALLOWED_RELEASE_PRODUCTS = {"core", "pytorch"}
 _RELEASE_STREAM_BY_TYPE = {
     "dev": "dev",
     "dev-bkc": "bkc",
@@ -207,7 +207,7 @@ def get_product_release_bucket_config(
     Args:
         release_type: "dev", "dev-bkc", "nightly", "nightly-bkc", or
             "prerelease".
-        product: "core", "pytorch", or "jax".
+        product: "core" or "pytorch".
 
     Raises:
         ValueError: If release_type or product is invalid.

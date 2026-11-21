@@ -167,10 +167,6 @@ artifact_groups = [
 description = "ROCm emulation, virtualization, and instrumentation tools"
 artifact_groups = ["rocjitsu"]
 
-[build_stages.wsl-rocdxg]
-description = "WSL-only ROCDXG bridge library"
-artifact_groups = ["wsl-rocdxg"]
-
 [build_stages.runtime-tests]
 description = "Runtime tests (parallel to math-libs, not on critical path)"
 artifact_groups = ["runtime-tests"]
@@ -242,12 +238,6 @@ source_sets = ["base", "rocm-systems"]
 description = "Core runtime (ROCR-Runtime, rocminfo)"
 type = "generic"
 artifact_group_deps = ["base", "third-party-sysdeps"]
-source_sets = ["rocm-systems"]
-
-[artifact_groups.wsl-rocdxg]
-description = "WSL-only ROCDXG bridge library"
-type = "generic"
-artifact_group_deps = ["base"]
 source_sets = ["rocm-systems"]
 
 [artifact_groups.core-amdsmi]
@@ -544,13 +534,6 @@ feature_group = "CORE"
 disable_platforms_if_flags_not_set = { windows = "HSA_WINDOWS_SHARED_RUNTIME" }
 test_artifacts = ["core-hiptests", "rocrtst"]  # When building ROCR, also build hip-tests and rocrtst
 source_paths = ["rocr-runtime", "rocminfo", "amdgpu-windows-interop"]
-
-[artifacts.wsl-rocdxg]
-artifact_group = "wsl-rocdxg"
-type = "target-neutral"
-artifact_deps = ["core-hip"]
-feature_name = "WSL_ROCDXG"
-feature_group = "WSL"
 
 [artifacts.core-amdsmi]
 artifact_group = "core-amdsmi"

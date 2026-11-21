@@ -61,10 +61,6 @@ def find_libraries(*shortnames: str) -> list[Path]:
             entry_pattern = lib_entry.so_pattern
         matching_paths = sorted(relpath.glob(entry_pattern))
         if len(matching_paths) == 0:
-            if lib_entry.optional:
-                # Optional libraries (e.g. WSL-only rocdxg) may be absent from
-                # the distribution. Skip rather than failing.
-                continue
             raise FileNotFoundError(
                 f"Could not find rocm library '{shortname}' at path '{relpath},' no match for pattern '{entry_pattern}'"
             )
