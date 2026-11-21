@@ -100,6 +100,7 @@ jobs:
       - name: Generate manifest diff report
         id: gen-report
         env:
+          THEROCK_MANIFEST_REPOSITORY: ${{ inputs.repository || github.repository }}
           GITHUB_TOKEN: ${{ github.token }}
         run: |
           python3 build_tools/generate_manifest_diff_report.py \
