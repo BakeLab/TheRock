@@ -46,17 +46,17 @@ The product names below are representative examples, not an exhaustive list.
 For current product-to-target mappings, see the
 [AMD GPU specifications](https://rocm.docs.amd.com/en/latest/reference/gpu-specs.html).
 
-| Product Name                    | GFX Target | GFX Family   | Install instructions                                                                               |
-| ------------------------------- | ---------- | ------------ | -------------------------------------------------------------------------------------------------- |
+| Product Name                    | GFX Target | GFX Family   | Install instructions                                               |
+| ------------------------------- | ---------- | ------------ | ------------------------------------------------------------------ |
 | MI300A/MI300X                   | gfx942     | gfx94X-dcgpu | [rocm](#rocm-for-gfx94X-dcgpu) // [torch](#torch-for-gfx94X-dcgpu) |
 | MI350X/MI355X                   | gfx950     | gfx950-dcgpu | [rocm](#rocm-for-gfx950-dcgpu) // [torch](#torch-for-gfx950-dcgpu) |
-| AMD RX 7900 XTX                 | gfx1100    | gfx110X-all  | [rocm](#rocm-for-gfx110X-all) // [torch](#torch-for-gfx110X-all)    |
-| AMD RX 7800 XT                  | gfx1101    | gfx110X-all  | [rocm](#rocm-for-gfx110X-all) // [torch](#torch-for-gfx110X-all)    |
-| AMD Radeon RX 7600              | gfx1102    | gfx110X-all  | [rocm](#rocm-for-gfx110X-all) // [torch](#torch-for-gfx110X-all)    |
-| AMD Ryzen 7 7840U / Ryzen 9 270 | gfx1103    | gfx110X-all  | [rocm](#rocm-for-gfx110X-all) // [torch](#torch-for-gfx110X-all)    |
-| AMD Strix Halo iGPU             | gfx1151    | gfx1151      | [rocm](#rocm-for-gfx1151) // [torch](#torch-for-gfx1151)                |
-| AMD RX 9060 / XT                | gfx1200    | gfx120X-all  | [rocm](#rocm-for-gfx120X-all) // [torch](#torch-for-gfx120X-all)    |
-| AMD RX 9070 / XT                | gfx1201    | gfx120X-all  | [rocm](#rocm-for-gfx120X-all) // [torch](#torch-for-gfx120X-all)    |
+| AMD RX 7900 XTX                 | gfx1100    | gfx110X-all  | [rocm](#rocm-for-gfx110X-all) // [torch](#torch-for-gfx110X-all)   |
+| AMD RX 7800 XT                  | gfx1101    | gfx110X-all  | [rocm](#rocm-for-gfx110X-all) // [torch](#torch-for-gfx110X-all)   |
+| AMD Radeon RX 7600              | gfx1102    | gfx110X-all  | [rocm](#rocm-for-gfx110X-all) // [torch](#torch-for-gfx110X-all)   |
+| AMD Ryzen 7 7840U / Ryzen 9 270 | gfx1103    | gfx110X-all  | [rocm](#rocm-for-gfx110X-all) // [torch](#torch-for-gfx110X-all)   |
+| AMD Strix Halo iGPU             | gfx1151    | gfx1151      | [rocm](#rocm-for-gfx1151) // [torch](#torch-for-gfx1151)           |
+| AMD RX 9060 / XT                | gfx1200    | gfx120X-all  | [rocm](#rocm-for-gfx120X-all) // [torch](#torch-for-gfx120X-all)   |
+| AMD RX 9070 / XT                | gfx1201    | gfx120X-all  | [rocm](#rocm-for-gfx120X-all) // [torch](#torch-for-gfx120X-all)   |
 
 ### Installing ROCm Python packages
 

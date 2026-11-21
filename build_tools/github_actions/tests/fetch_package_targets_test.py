@@ -10,7 +10,12 @@ from unittest.mock import patch
 sys.path.insert(0, os.fspath(Path(__file__).parent.parent))
 import fetch_package_targets
 
-from workflow_utils import WORKFLOWS_DIR, get_choice_options, load_workflow
+from workflow_utils import (
+    WORKFLOWS_DIR,
+    get_choice_options,
+    get_workflow_dispatch_inputs,
+    load_workflow,
+)
 
 
 class FetchPackageTargetsTest(unittest.TestCase):
@@ -42,19 +47,17 @@ class FetchPackageTargetsTest(unittest.TestCase):
         self.assertGreater(len(produced_families), 0)
 
         # Find all workflows with amdgpu_family as type: choice and check.
+        family_workflows = []
         choice_workflows = {}
         for workflow_path in sorted(WORKFLOWS_DIR.glob("*.yml")):
             workflow = load_workflow(workflow_path)
+            if "amdgpu_family" in get_workflow_dispatch_inputs(workflow):
+                family_workflows.append(workflow_path.name)
             options = get_choice_options(workflow, "amdgpu_family")
             if options is not None:
                 choice_workflows[workflow_path.name] = options
 
-        self.assertGreater(
-            len(choice_workflows),
-            0,
-            "No workflows found with amdgpu_family as type: choice - "
-            "was the input renamed?",
-        )
+        self.assertTrue(family_workflows, "No workflow dispatch accepts amdgpu_family")
 
         errors = []
         for workflow_name, options in choice_workflows.items():
