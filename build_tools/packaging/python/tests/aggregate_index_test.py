@@ -148,9 +148,6 @@ def test_checked_in_manifest_loads() -> None:
         "stable",
         "stable-staging",
     )
-    assert "jax-rocm7-plugin" not in index.packages
-    assert "jax-rocm7-pjrt" not in index.packages
-    assert index.packages["jax-rocm10-plugin"].owner_path == "jax/whl-next"
     assert index.packages["rocm-sdk-core"].owner_path == "core/whl-next"
     assert index.packages["torch"].owner_path == "pytorch/whl-next"
 
@@ -169,7 +166,6 @@ def test_checked_in_manifest_bkc_contains_only_gfx1250_targets() -> None:
         package_name
         for package_name in index.packages
         if target_package_marker not in package_name
-        and not package_name.startswith("jax-")
     } | expected_bkc_target_packages
 
     assert set(index.active_packages("bkc")) == expected_bkc_packages
@@ -180,7 +176,7 @@ def test_checked_in_manifest_uses_known_owner_paths() -> None:
     manifest_path = Path(__file__).parents[1] / "rocm_whl_next_ownership.yaml"
     manifest = load_ownership_manifest(manifest_path)
     index = manifest.python_indexes[0]
-    known_owner_paths = {"core/whl-next", "jax/whl-next", "pytorch/whl-next"}
+    known_owner_paths = {"core/whl-next", "pytorch/whl-next"}
 
     assert {
         *[package.owner_path for package in index.packages.values()],

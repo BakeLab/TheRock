@@ -30,7 +30,7 @@ def main(argv: list[str] | None = None):
     parser.add_argument(
         "--product",
         required=True,
-        choices=["core", "pytorch", "jax"],
+        choices=["core", "pytorch"],
         help="Product bucket to publish to.",
     )
     args = parser.parse_args(argv)

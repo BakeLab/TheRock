@@ -66,9 +66,6 @@ _ALLOWED_CPYTHON_TAGS: frozenset[str] = frozenset(
 )
 
 PACKAGES_PER_PROJECT = {
-    "ml_dtypes": {"versions": ["latest"], "project": "jax"},
-    "opt_einsum": {"versions": ["latest"], "project": "jax"},
-    "tomli": {"versions": ["latest"], "project": "jax"},
     "sympy": {"versions": ["latest"], "project": "torch"},
     "mpmath": {"versions": ["1.3.0"], "project": "torch"},
     "pillow": {"versions": ["latest"], "project": "torch"},

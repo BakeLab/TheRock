@@ -185,10 +185,6 @@ python_indexes:
       fsspec:
         owner_path: core/whl-next
         stream_group: all
-      jax-rocm10-pjrt:
-        owner_path: jax/whl-next
-      jax-rocm10-plugin:
-        owner_path: jax/whl-next
       jinja2:
         owner_path: core/whl-next
         stream_group: all

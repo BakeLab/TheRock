@@ -55,9 +55,6 @@ class DependencyPolicy:
 
 
 DEPENDENCIES: dict[str, DependencyPolicy] = {
-    "ml_dtypes": DependencyPolicy(project="jax", versions=("latest",)),
-    "opt_einsum": DependencyPolicy(project="jax", versions=("latest",)),
-    "tomli": DependencyPolicy(project="jax", versions=("latest",)),
     "sympy": DependencyPolicy(project="torch", versions=("latest",)),
     "mpmath": DependencyPolicy(project="torch", versions=("1.3.0",)),
     "pillow": DependencyPolicy(project="torch", versions=("latest",)),

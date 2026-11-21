@@ -391,7 +391,7 @@ Safety Features:
         default=False,
         help=(
             "Upload to the per-product repo.amd.com layout (RFC0012) instead of the "
-            "flat testing/release bucket: routes each core/pytorch/jax wheel from "
+            "flat testing/release bucket: routes each core/pytorch wheel from "
             "<input-dir>/wheels to its own product bucket at "
             "v5/rocm/<product>/<index>/<package>/. Forces --multi-arch on, even if "
             "--no-multi-arch was also passed. See --repo-stream and --python-index."
