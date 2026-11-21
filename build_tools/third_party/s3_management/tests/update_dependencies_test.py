@@ -152,13 +152,12 @@ def test_normalize_package_name() -> None:
 
 
 def test_get_project_paths() -> None:
-    assert get_project_paths() == ["jax", "rocm", "torch"]
+    assert get_project_paths() == ["rocm", "torch"]
 
 
 def test_get_dependency_package_names() -> None:
     assert "setuptools" in get_dependency_package_names("rocm")
     assert "jinja2" in get_dependency_package_names("torch")
-    assert "ml_dtypes" in get_dependency_package_names("jax")
 
 
 # ---------------------------------------------------------------------------
@@ -254,7 +253,7 @@ def test_get_selected_packages_all() -> None:
     assert selected == PACKAGES_PER_PROJECT
     # Packages from every project are present.
     projects = {info["project"] for info in selected.values()}
-    assert projects == {"jax", "rocm", "torch"}
+    assert projects == {"rocm", "torch"}
 
 
 def test_get_selected_packages_filters_by_project() -> None:
@@ -262,7 +261,6 @@ def test_get_selected_packages_filters_by_project() -> None:
     assert selected
     assert all(info["project"] == "torch" for info in selected.values())
     assert "numpy" in selected
-    # jax-only deps must be excluded.
     assert "ml_dtypes" not in selected
 
 
@@ -280,9 +278,9 @@ def test_get_selected_packages_dependency_filter() -> None:
 
 def test_get_selected_packages_dependency_filter_across_all() -> None:
     selected = get_selected_packages(
-        package="all", dependency_names=frozenset({"ml_dtypes", "numpy"})
+        package="all", dependency_names=frozenset({"setuptools", "numpy"})
     )
-    assert set(selected) == {"ml_dtypes", "numpy"}
+    assert set(selected) == {"setuptools", "numpy"}
 
 
 def test_get_selected_packages_unknown_dependency_raises() -> None:

@@ -22,7 +22,7 @@ TheRock provides:
 - A CMake-based build for ROCm components
 - A setuptools-based build for ROCm Python packages
 - (Coming soon!) Scripts for producing native RPM and DEB packages
-- Scripts for building projects like PyTorch and JAX
+- Scripts for building projects like PyTorch
 
 ![Build architecture](assets/therock_build_architecture.excalidraw.svg#gh-light-mode-only)
 ![Build architecture (dark)](assets/therock_build_architecture_dark.excalidraw.svg#gh-dark-mode-only)

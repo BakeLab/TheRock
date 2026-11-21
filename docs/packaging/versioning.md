@@ -238,26 +238,6 @@ The scripts produce these versions for each distribution channel:
 
 For manually dispatched `dev` PyTorch builds (`build_prod_wheels.py --release-type dev`), each wheel version is additionally tagged with its own 8-character source commit in the PEP 440 local version segment, e.g. `2.12.0a0+git1a2b3c4d.rocm7.10.0`. This applies to the `torch`, `torchaudio`, and `torchvision` wheels, so each records exactly which source commit produced it.
 
-#### JAX versions
-
-JAX packages versions are handled via scripts:
-
-- [`build_tools/github_actions/determine_version.py`](/build_tools/github_actions/determine_version.py) (this generates e.g. `--version-suffix +rocm7.10.0`)
-  - [`build_tools/github_actions/tests/determine_version_test.py`](/build_tools/github_actions/tests/determine_version_test.py)
-- [`build_tools/github_actions/write_jax_versions.py`](/build_tools/github_actions/write_jax_versions.py)
-  (this finds the versions in built packages)
-- [`build_tools/github_actions/generate_jax_manifest.py`](/build_tools/github_actions/generate_jax_manifest.py)
-  (this records versions into a manifest file)
-  - [`build_tools/github_actions/tests/generate_jax_manifest_test.py`](/build_tools/github_actions/tests/generate_jax_manifest_test.py)
-- In the [ROCm/rocm-jax repository](https://github.com/ROCm/rocm-jax): [`build/ci_build`](https://github.com/ROCm/rocm-jax/blob/rocm-jax-infra/build/ci_build) (see the `--rocm-version` and `--no-rocm-version-extra` flags)
-
-Versions for each distribution channel:
-
-| Package name     | Example release version (stable x stable) | Example nightly version (stable x nightly) |
-| ---------------- | ----------------------------------------- | ------------------------------------------ |
-| jax-rocm7-pjrt   | `0.10.0+rocm7.14.0`                       | `0.10.2+rocm7.15.0a20260712`               |
-| jax-rocm7-plugin | `0.10.0+rocm7.14.0`                       | `0.10.2+rocm7.15.0a20260712`               |
-
 ### Working with Python package versions
 
 When working with versions please use these tools and avoid custom parsing

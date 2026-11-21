@@ -68,10 +68,6 @@ on:
         type: boolean
         default: true
         description: "Build PyTorch wheels"
-      build_jax:
-        type: boolean
-        default: true
-        description: "Build JAX wheels"
       build_native_linux:
         type: boolean
         default: true
@@ -116,7 +112,6 @@ jobs:
       stage_reuse_commit_history: ${{ inputs.stage_reuse_commit_history || '50' }}
       build_python_packages: ${{ github.event_name != 'workflow_dispatch' || inputs.build_python_packages }}
       build_pytorch: ${{ github.event_name != 'workflow_dispatch' || inputs.build_pytorch }}
-      build_jax: ${{ github.event_name != 'workflow_dispatch' || inputs.build_jax }}
       build_native_linux: ${{ github.event_name != 'workflow_dispatch' || inputs.build_native_linux }}
       build_stages: ${{ inputs.build_stages || '' }}
     secrets: inherit

@@ -19,7 +19,7 @@ to be either a package to promote or a PyPI dependency are also listed.
 Previously downloaded packages are skipped.
 
 "Structured" (--structured) downloads from the per-product repo.amd.com layout
-defined by RFC0012 instead of the flat prerelease bucket: core, PyTorch, and JAX
+defined by RFC0012 instead of the flat prerelease bucket: core and PyTorch
 wheels each live in their own bucket (therock-repo-amd-<stream>-<product>) under
 v5/rocm/<product>/<index>/<package>/. This is "product-local" in the sense that
 each product's packages are discovered independently, per-product, rather than
@@ -172,16 +172,10 @@ except ImportError:
 MAX_S3_KEYS_CHECK = 100
 BYTES_TO_MB = 1024 * 1024  # Conversion factor from bytes to MB
 
-# The JAX plugin/pjrt wheels embed the ROCm major version in their package name
-# (jax_rocm7_plugin for ROCm 7, jax_rocm10_plugin for ROCm 10), so they are
-# matched by pattern instead of listed once per ROCm release.
-JAX_ROCM_PACKAGE_PATTERN = re.compile(r"^jax_rocm\d+_(plugin|pjrt)$")
-
 # Package categories
 # Note: replace - in package names with _ to match the filename patterns in S3
 PACKAGES_TO_PROMOTE = {
     "apex",
-    "jaxlib",
     "rocm",
     "rocm_profiler",
     "rocm_sdk_core",
@@ -215,13 +209,6 @@ PACKAGES_TO_PROMOTE_MULTI_ARCH = {
 # copied from build_tools/third_party/s3_management/update_dependencies.py PACKAGES_PER_PROJECT
 # Note: replace - in package names with _ to match the filename patterns in S3
 DEPENDENCY_PACKAGES = {
-    # Jax
-    "dbus_python",
-    "flatbuffers",
-    "ml_dtypes",
-    "opt_einsum",
-    "tomli",
-    #
     # Torch
     "sympy",
     "mpmath",
@@ -360,9 +347,6 @@ def is_allowed_multi_arch_package(
     base = re.split(r"-\d", filename, maxsplit=1)[0]
     base = base.lower().replace("-", "_")
 
-    if JAX_ROCM_PACKAGE_PATTERN.match(base):
-        return True
-
     for pkg in PACKAGES_TO_PROMOTE_MULTI_ARCH:
 
         # Device packages contain gfx targets
@@ -400,12 +384,7 @@ def categorize_package(filename: str) -> str:
     """
     pkg_name = filename.split("-", 1)[0]
 
-    # Check for rocm-sdk-libraries-* and jax-rocm<major>-* patterns
-    if (
-        pkg_name.startswith("rocm_sdk_libraries")
-        or JAX_ROCM_PACKAGE_PATTERN.match(pkg_name)
-        or pkg_name in PACKAGES_TO_PROMOTE
-    ):
+    if pkg_name.startswith("rocm_sdk_libraries") or pkg_name in PACKAGES_TO_PROMOTE:
         return "promote"
 
     if pkg_name in DEPENDENCY_PACKAGES:
@@ -1283,7 +1262,7 @@ Examples:
         default=False,
         help=(
             "Download from the per-product repo.amd.com layout (RFC0012) instead of "
-            "the flat prerelease bucket: each core/pytorch/jax product is discovered "
+            "the flat prerelease bucket: each core/pytorch product is discovered "
             "in its own bucket at v5/rocm/<product>/<index>/<package>/. Forces "
             "--multi-arch on, even if --no-multi-arch was also passed. See "
             "--repo-stream, --python-index, and --product."
@@ -1317,7 +1296,7 @@ Examples:
         action="append",
         default=[],
         help=(
-            "Product to download with --structured: core, pytorch, or jax. "
+            "Product to download with --structured: core or pytorch. "
             "Can be repeated or comma-separated. Defaults to all products."
         ),
     )
@@ -1551,7 +1530,7 @@ def download_prerelease_packages(
         structured: Use the per-product repo.amd.com layout (RFC0012) instead of the
                    flat prerelease bucket. Implies multi_arch=True; see products,
                    repo_stream, and python_index.
-        products: Structured products to include (default: all of core/pytorch/jax).
+        products: Structured products to include (default: all of core/pytorch).
                  Only used when structured=True.
         repo_stream: repo.amd.com release stream selecting the destination bucket
                     per product (dev, nightly, or rc). Only used when structured=True.

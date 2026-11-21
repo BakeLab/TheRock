@@ -1,7 +1,7 @@
 # Releases
 
 This page describes how to install and use our release artifacts for ROCm and
-external builds like PyTorch and JAX. We produce build artifacts as part of our
+external builds like PyTorch. We produce build artifacts as part of our
 Continuous Integration (CI) build/test workflows as well as release artifacts as
 part of Continuous Delivery (CD) nightly releases.
 
@@ -34,7 +34,6 @@ Table of contents:
       - [Using multi-arch ROCm Python packages](#using-multi-arch-rocm-python-packages)
       - [Supported Python `[device-*]` install extras](#supported-python-device--install-extras)
     - [Installing multi-arch PyTorch Python packages](#installing-multi-arch-pytorch-python-packages)
-    - [Installing multi-arch JAX Python packages](#installing-multi-arch-jax-python-packages)
   - [Installing multi-arch native packages](#installing-multi-arch-native-packages)
     - [Installing multi-arch native Linux packages](#installing-multi-arch-native-linux-packages)
       <!-- - [Using ROCm from WSL](#using-rocm-from-wsl) -->
@@ -87,7 +86,6 @@ Key differences from
 | PyTorch packages - Linux build/test    | [![Multi-Arch Release Linux PyTorch Wheels](https://github.com/ROCm/rockrel/actions/workflows/multi_arch_release_linux_pytorch_wheels.yml/badge.svg)](https://github.com/ROCm/rockrel/actions/workflows/multi_arch_release_linux_pytorch_wheels.yml)       |
 | PyTorch packages - Windows build/test  | [![Multi-Arch Release Windows PyTorch Wheels](https://github.com/ROCm/rockrel/actions/workflows/multi_arch_release_windows_pytorch_wheels.yml/badge.svg)](https://github.com/ROCm/rockrel/actions/workflows/multi_arch_release_windows_pytorch_wheels.yml) |
 | PyTorch packages - full tests          | [![Test PyTorch Wheels (Full Suite)](https://github.com/ROCm/rockrel/actions/workflows/test_pytorch_wheels_full.yml/badge.svg)](https://github.com/ROCm/rockrel/actions/workflows/test_pytorch_wheels_full.yml)                                            |
-| JAX packages - Linux build/test        | [![Multi-Arch Release Linux JAX Wheels](https://github.com/ROCm/rockrel/actions/workflows/multi_arch_release_linux_jax_wheels.yml/badge.svg)](https://github.com/ROCm/rockrel/actions/workflows/multi_arch_release_linux_jax_wheels.yml)                   |
 
 **Package availability:**
 
@@ -95,7 +93,6 @@ Key differences from
 | ----------------------- | ------------ | ----------------------------------------------------------------- |
 | ROCm Python packages    | ✅ Available | ✅ Available                                                      |
 | PyTorch Python packages | ✅ Available | ✅ Available                                                      |
-| JAX Python packages     | ✅ Available | -                                                                 |
 | ROCm tarballs           | ✅ Available | ✅ Available                                                      |
 | Native packages         | ✅ Available | 🟠 Planned ([#1987](https://github.com/ROCm/TheRock/issues/1987)) |
 
@@ -122,7 +119,7 @@ Current releases use these stream-specific locations:
 
 Nightly releases of ROCm and framework Python packages are published to a
 unified aggregate index at https://nightly.repo.amd.com/rocm/whl-next/. The
-aggregate index includes packages from ROCm Core, PyTorch, and JAX so
+aggregate index includes packages from ROCm Core and PyTorch so
 dependencies can resolve across products.
 
 > [!TIP]
@@ -441,67 +438,6 @@ more details on supported PyTorch versions and building from source.
 See also the
 [Testing the PyTorch installation](https://rocm.docs.amd.com/projects/install-on-linux/en/develop/install/3rd-party/pytorch-install.html#testing-the-pytorch-installation)
 instructions in the AMD ROCm documentation.
-
-#### Installing multi-arch JAX Python packages
-
-Install JAX with ROCm support using the unified multi-arch index.
-
-> [!IMPORTANT]
-> Unlike PyTorch, the JAX wheels do **not** automatically install ROCm packages
-> as a dependency. You must install ROCm first by following
-> [Installing multi-arch ROCm Python packages](#installing-multi-arch-rocm-python-packages).
->
-> Always pin `jax`, `jax_rocm<major>_plugin`, and `jax_rocm<major>_pjrt` to the
-> same version.
->
-> The plugin and PJRT package names embed the ROCm major version they were built
-> against, so the name to install depends on the ROCm release: `jax_rocm7_*` for
-> ROCm 7.x and `jax_rocm10_*` for ROCm 10.x.
-
-```bash
-# Set the version (currently supported: 0.10.1, 0.10.2, 0.11.0, and 0.11.1)
-JAX_VERSION=0.11.1
-
-# 1. Install ROCm (replace device-gfx942 with your GPU)
-pip install --index-url https://nightly.repo.amd.com/rocm/whl-next/ \
-    "rocm[libraries,device-gfx942]"
-
-# 2. Install JAX ROCm wheels
-# Use the ROCm major version the wheels were built against: 7 for ROCm 7.x, 10
-# for ROCm 10.x.
-ROCM_MAJOR=10
-pip install --index-url https://nightly.repo.amd.com/rocm/whl-next/ \
-    "jax_rocm${ROCM_MAJOR}_plugin==${JAX_VERSION}" \
-    "jax_rocm${ROCM_MAJOR}_pjrt==${JAX_VERSION}"
-
-# 3. Install matching jax from PyPI
-pip install "jax==${JAX_VERSION}"
-```
-
-After installing, verify JAX can see your GPU:
-
-```python
-import jax
-
-print(jax.devices())
-# [RocmDevice(id=0), RocmDevice(id=1), ...]
-```
-
-> [!NOTE]
-> On ROCm 10, a released `jaxlib` (0.10.1 through 0.11.0) does not know the
-> `jax_rocm10_plugin` name, so the GPU kernel modules resolve to `None` and no FFI
-> handlers are registered. Symptoms are `'NoneType' object has no attribute ...` and
-> `No FFI handler registered for hipsolver_*`. Those versions predate the upstream fix
-> ([jax-ml/jax#39634](https://github.com/jax-ml/jax/pull/39634)), which first shipped in
-> `jaxlib` 0.11.1. On an older `jaxlib`, teach the installed copy about the new major:
->
-> ```bash
-> python external-builds/jax/patch_installed_jax_rocm_plugin_names.py \
->     --plugin-package "jax_rocm${ROCM_MAJOR}_plugin"
-> ```
->
-> The script edits the installed files in place, is idempotent, and is a no-op on ROCm 7
-> or once a fixed `jaxlib` is installed.
 
 ### Installing multi-arch native packages
 

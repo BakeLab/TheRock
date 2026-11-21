@@ -75,7 +75,6 @@ def _jobs(
     prebuilt_stages: list[str] | None = None,
     baseline_run_id: str = "",
     build_pytorch: bool = True,
-    build_jax: bool = False,
 ) -> cm.JobDecisions:
     """Construct default job decisions for tests that exercise later stages."""
     prebuilt_stages = prebuilt_stages or []
@@ -95,9 +94,6 @@ def _jobs(
         ),
         test_pytorch=cm.JobGroupDecision(
             action=cm.JobAction.RUN if build_pytorch else cm.JobAction.SKIP
-        ),
-        build_jax=cm.JobGroupDecision(
-            action=cm.JobAction.RUN if build_jax else cm.JobAction.SKIP
         ),
     )
 
@@ -163,7 +159,6 @@ class TestCIInputsFromEnviron(unittest.TestCase):
                 "PREBUILT_STAGES": "compiler-runtime,runtime-tests",
                 "BASELINE_RUN_ID": "12345",
                 "BUILD_PYTORCH": "false",
-                "BUILD_JAX": "true",
                 "PYTHON_VERSION": "3.14",
             },
         )
@@ -172,7 +167,6 @@ class TestCIInputsFromEnviron(unittest.TestCase):
         self.assertEqual(inputs.prebuilt_stages, "compiler-runtime,runtime-tests")
         self.assertEqual(inputs.baseline_run_id, "12345")
         self.assertFalse(inputs.build_pytorch)
-        self.assertTrue(inputs.build_jax)
         self.assertEqual(inputs.python_versions, ["3.14"])
 
     def test_pull_request_extracts_labels(self):
@@ -400,7 +394,6 @@ class TestDecideJobs(unittest.TestCase):
         self.assertEqual(result.build_rocm_python.action, cm.JobAction.RUN)
         self.assertEqual(result.build_pytorch.action, cm.JobAction.RUN)
         self.assertEqual(result.test_pytorch.action, cm.JobAction.RUN)
-        self.assertEqual(result.build_jax.action, cm.JobAction.SKIP)
 
     def test_build_pytorch_input_skips_pytorch_jobs(self):
         result = cm.decide_jobs(
@@ -411,15 +404,6 @@ class TestDecideJobs(unittest.TestCase):
 
         self.assertEqual(result.build_pytorch.action, cm.JobAction.SKIP)
         self.assertEqual(result.test_pytorch.action, cm.JobAction.SKIP)
-
-    def test_build_jax_input_runs_jax_job(self):
-        result = cm.decide_jobs(
-            self._inputs(build_jax=True),
-            git_context=cm.GitContext(),
-            targets=cm.TargetSelection(),
-        )
-
-        self.assertEqual(result.build_jax.action, cm.JobAction.RUN)
 
     def test_default_test_type_is_quick(self):
         """Default test_type for PR/push with no special conditions."""
@@ -676,7 +660,6 @@ class TestDecideJobs(unittest.TestCase):
         # Packages should be disabled due to skipped stages
         self.assertFalse(result.linux.build_python_packages)
         self.assertFalse(result.linux.build_pytorch)
-        self.assertFalse(result.linux.build_jax)
         self.assertFalse(result.linux.build_native_linux)
 
     def test_build_stages_rejects_incompatible_test_labels(self):
@@ -1136,7 +1119,6 @@ class TestExpandBuildConfigs(unittest.TestCase):
             build_variant_suffix="",
             build_variant_cmake_preset="",
             build_pytorch=True,
-            build_jax=False,
             build_native_linux=True,
             build_python_packages=True,
         )
@@ -1168,7 +1150,6 @@ class TestExpandBuildConfigs(unittest.TestCase):
             build_variant_suffix="",
             build_variant_cmake_preset="release",
             build_pytorch=True,
-            build_jax=False,
             build_native_linux=True,
             build_python_packages=True,
         )
@@ -1420,42 +1401,6 @@ class TestExpandBuildConfigs(unittest.TestCase):
         self.assertFalse(result.linux.build_pytorch)
         self.assertEqual(result.linux.pytorch_build_matrix, [])
 
-    def test_build_config_includes_jax_build_matrix(self):
-        targets = cm.TargetSelection(
-            linux_families=["gfx94x"],
-            windows_families=["gfx110x"],
-        )
-        result = cm.expand_build_configs(
-            ci_inputs=self._inputs(python_versions=["3.14"]),
-            git_context=cm.GitContext(),
-            targets=targets,
-            jobs=_jobs(build_jax=True),
-        )
-
-        self.assertTrue(result.linux.build_jax)
-        self.assertGreater(len(result.linux.jax_build_matrix), 0)
-        self.assertEqual(
-            {row["python_version"] for row in result.linux.jax_build_matrix},
-            {"3.14"},
-        )
-        self.assertFalse(result.windows.build_jax)
-        self.assertEqual(result.windows.jax_build_matrix, [])
-
-    def test_build_config_disables_jax_when_job_skipped(self):
-        targets = cm.TargetSelection(
-            linux_families=["gfx94x"],
-            windows_families=[],
-        )
-        result = cm.expand_build_configs(
-            ci_inputs=self._inputs(),
-            git_context=cm.GitContext(),
-            targets=targets,
-            jobs=_jobs(build_jax=False),
-        )
-
-        self.assertFalse(result.linux.build_jax)
-        self.assertEqual(result.linux.jax_build_matrix, [])
-
     def test_build_native_linux_input_disables_native_packages(self):
         """build_native_linux=False disables native package builds."""
         targets = cm.TargetSelection(linux_families=["gfx94x"])
@@ -1648,7 +1593,6 @@ class TestFormatSummary(unittest.TestCase):
             build_rocm_python=cm.JobGroupDecision(action=cm.JobAction.RUN),
             build_pytorch=cm.JobGroupDecision(action=cm.JobAction.RUN),
             test_pytorch=cm.JobGroupDecision(action=cm.JobAction.RUN),
-            build_jax=cm.JobGroupDecision(action=cm.JobAction.SKIP),
         )
         outputs = cm.CIOutputs(is_ci_enabled=True, jobs=jobs)
         result = format_summary(self._inputs(), outputs)
@@ -1804,7 +1748,6 @@ class TestConfigurePipeline(unittest.TestCase):
             build_rocm_python=cm.JobGroupDecision(action=cm.JobAction.RUN),
             build_pytorch=cm.JobGroupDecision(action=cm.JobAction.RUN),
             test_pytorch=cm.JobGroupDecision(action=cm.JobAction.RUN),
-            build_jax=cm.JobGroupDecision(action=cm.JobAction.SKIP),
         )
 
         inputs = cm.CIInputs(

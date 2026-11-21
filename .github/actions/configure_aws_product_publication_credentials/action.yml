@@ -13,7 +13,7 @@ inputs:
     description: 'Release type: "dev", "dev-bkc", "nightly", "nightly-bkc", or "prerelease"'
     required: true
   product:
-    description: 'Product bucket: "core", "pytorch", or "jax"'
+    description: 'Product bucket: "core" or "pytorch"'
     required: true
 
 runs:

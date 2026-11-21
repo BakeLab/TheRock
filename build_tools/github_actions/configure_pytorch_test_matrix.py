@@ -4,8 +4,7 @@
 
 """Configure PyTorch wheel test jobs for multi-arch build workflows.
 
-TODO(#5110): Extract the AMDGPU family -> test runner policy once JAX needs
-the same flow. Standalone workflow_dispatch runs can keep using raw family
+TODO(#5110): Extract the AMDGPU family -> test runner policy. Standalone workflow_dispatch runs can keep using raw family
 inputs, while coordinated CI/release runs should be able to pass the
 per-family test policy produced by configure_multi_arch_ci.py. That shared
 policy should also support named defaults such as "release" and "presubmit",
